@@ -8,7 +8,7 @@ public class SGPurchases{
     static var purchaseItems:Set<SGProduct> = []
     var updateListenerTask: Task<Void, Error>? = nil
     static var purchaseItemsString:[String:[String]] = [:]
-    static let shared = SGPurchases()
+    public static let shared = SGPurchases()
     private init(){
         // Listen for transactions
         updateListenerTask = listenForTransactions()
@@ -27,7 +27,7 @@ public class SGPurchases{
     ///     ],
     ///}
     /// ```
-    static func initItems(from url:URL){
+    public static func initItems(from url:URL){
         Task.detached{
             // Load plist file from url
             guard let data = try? Data(contentsOf: url) else{
@@ -45,16 +45,19 @@ public class SGPurchases{
             await loadItems()
         }
     }
-    static func loadItems() async{
+    public static func loadItems() async {
         // Load products from purchase id
         if purchaseItemsString.isEmpty{
             assertionFailure("purchaseItemsString is empty")
             return
         }
-        for (key, value) in purchaseItemsString{
-            let products = (try? await Product.products(for: value)) ?? []
-            for product in products{
-                purchaseItems.insert(SGProduct(productId: product.id, group: key,product: product))
+        if Self.purchaseItems.isEmpty{
+            for (key, value) in purchaseItemsString{
+                let products = (try? await Product.products(for: value)) ?? []
+                for product in products{
+                    purchaseItems.insert(SGProduct(productId: product.id, group: key,product: product))
+                    print("product \(product.id) loaded")
+                }
             }
         }
     }
@@ -87,8 +90,9 @@ public class SGPurchases{
             }
         }
     }
-    func purchase(_ product: Product) async throws -> Transaction? {
+    public func purchase(_ sgProduct: SGProduct) async throws -> Transaction? {
         //make a purchase request - optional parameters available
+        let product = sgProduct.product
         let result = try await product.purchase()
         
         // check the results
@@ -111,14 +115,16 @@ public class SGPurchases{
         }
         
     }
-    func checkGroupStatus(_ group:String) async -> Bool{
+    public func checkGroupStatus(_ group:String) async -> Bool{
         if Self.purchaseItems.isEmpty{
             await SGPurchases.loadItems()
         }
         await updateCustomerProductStatus()
-        return Self.purchaseItems.contains(where: { $0.group == group && $0.purchased == true})
+        let result = Self.purchaseItems.contains(where: { $0.group == group && $0.purchased == true})
+        print("group \(group) purchased \(result)")
+        return result
     }
-    func restorePurchase()async{
+    public func restorePurchase()async{
         try? await AppStore.sync()
     }
     func updateCustomerProductStatus() async {
@@ -141,6 +147,15 @@ public class SGPurchases{
             
         }
     }
-    
+    public func getProducts(_ group:String) async -> [SGProduct]{
+        if Self.purchaseItems.isEmpty{
+            await SGPurchases.loadItems()
+        }
+        var items = Array(Self.purchaseItems.filter({$0.group == group}))
+        items.sort { l, r in
+            l.product.price < r.product.price
+        }
+        return items
+    }
 }
 

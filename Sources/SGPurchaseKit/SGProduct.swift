@@ -7,17 +7,17 @@
 
 import Foundation
 import StoreKit
-struct SGProduct:Hashable{
+public struct SGProduct:Hashable{
     let productId:String
     let group:String
     var purchased = false
-    let product:Product
+    public let product:Product
     init(productId:String, group:String,product:Product){
         self.productId = productId
         self.group = group
         self.product = product
     }
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(productId)
     }
 }
