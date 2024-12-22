@@ -12,10 +12,11 @@ public struct SGProduct:Hashable{
     let group:String
     var purchased = false
     public let product:Product
-    init(productId:String, group:String,product:Product){
+    init(productId:String, group:String,product:Product,purchased:Bool = false) {
         self.productId = productId
         self.group = group
         self.product = product
+        self.purchased = purchased
     }
     public func hash(into hasher: inout Hasher) {
         hasher.combine(productId)

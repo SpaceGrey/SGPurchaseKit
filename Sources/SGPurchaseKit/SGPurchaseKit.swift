@@ -11,6 +11,7 @@ public class SGPurchases{
     public static let shared = SGPurchases()
     private init(){
         // Listen for transactions
+        print("shared instance created")
         updateListenerTask = listenForTransactions()
     }
         
@@ -80,6 +81,7 @@ public class SGPurchases{
             for await result in Transaction.updates {
                 do {
                     let transaction = try await self.checkVerified(result)
+                    print("remote transaction \(transaction.productID)")
                     await self.updateCustomerProductStatus()
                     //Always finish a transaction
                     await transaction.finish()
@@ -128,24 +130,28 @@ public class SGPurchases{
         try? await AppStore.sync()
     }
     func updateCustomerProductStatus() async {
+        var purchasedIDs:[String] = []
         //iterate through all the user's purchased products
         for await result in Transaction.currentEntitlements {
             do {
                 //again check if transaction is verified
                 let transaction = try checkVerified(result)
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
-                if let oldProduct = Self.purchaseItems.first(where:{$0.productId == transaction.productID}){
-                    Self.purchaseItems.remove(oldProduct)
-                    var newProduct = oldProduct
-                    newProduct.purchased = true
-                    Self.purchaseItems.insert(newProduct)
-                }
+                print("new transaction \(transaction.productID)")
+                purchasedIDs.append(transaction.productID)
             } catch {
-                //storekit has a transaction that fails verification, don't delvier content to the user
                 print("Transaction failed verification")
             }
-            
         }
+        var newItems:Set<SGProduct> = []
+        for item in Self.purchaseItems{
+            if purchasedIDs.contains(item.productId){
+                newItems.insert(SGProduct(productId: item.productId, group: item.group, product: item.product, purchased: true))
+            } else {
+                newItems.insert(SGProduct(productId: item.productId, group: item.group, product: item.product, purchased: false))
+            }
+        }
+        Self.purchaseItems = newItems
     }
     public func getProducts(_ group:String) async -> [SGProduct]{
         if Self.purchaseItems.isEmpty{
