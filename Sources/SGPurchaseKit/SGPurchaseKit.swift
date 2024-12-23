@@ -46,6 +46,9 @@ public class SGPurchases{
             await loadItems()
         }
     }
+    /// load purchase items from the plist file that you passed in `initItems(from:)`
+    ///
+    /// in case the `initItems` load failed, you can call this function to reload the items.
     public static func loadItems() async {
         // Load products from purchase id
         if purchaseItemsString.isEmpty{
@@ -53,12 +56,16 @@ public class SGPurchases{
             return
         }
         if Self.purchaseItems.isEmpty{
+            var tempPurchaseItems:Set<SGProduct> = []
             for (key, value) in purchaseItemsString{
                 let products = (try? await Product.products(for: value)) ?? []
                 for product in products{
-                    purchaseItems.insert(SGProduct(productId: product.id, group: key,product: product))
-                    print("product \(product.id) loaded")
+                    tempPurchaseItems.insert(SGProduct(productId: product.id, group: key,product: product))
+                    print("group:\(key) product: \(product.id) loaded")
                 }
+            }
+            if Self.purchaseItems.isEmpty{
+                Self.purchaseItems = tempPurchaseItems
             }
         }
     }
@@ -92,6 +99,11 @@ public class SGPurchases{
             }
         }
     }
+    /// Purchase a product
+    /// - Parameter sgProduct: The product to purchase
+    /// - Returns: The current transaction if succeed, nil if user cancelled or pending
+    ///
+    /// You don't need to use the output   `Transaction`, you can use `checkGroupStatus` after `purchase` instead.
     public func purchase(_ sgProduct: SGProduct) async throws -> Transaction? {
         //make a purchase request - optional parameters available
         let product = sgProduct.product
@@ -117,6 +129,9 @@ public class SGPurchases{
         }
         
     }
+    
+    /// Check if a group is purchased
+    /// - Parameter group: The group to check
     public func checkGroupStatus(_ group:String) async -> Bool{
         if Self.purchaseItems.isEmpty{
             await SGPurchases.loadItems()
@@ -126,9 +141,15 @@ public class SGPurchases{
         print("group \(group) purchased \(result)")
         return result
     }
+    
+    /// Restore purchase
+    ///
+    /// The function will sync the data with App Store, if there's remote transaction, the listener will update the user's purchase automatically.
     public func restorePurchase()async{
         try? await AppStore.sync()
     }
+    
+    
     func updateCustomerProductStatus() async {
         var purchasedIDs:[String] = []
         //iterate through all the user's purchased products
@@ -153,6 +174,11 @@ public class SGPurchases{
         }
         Self.purchaseItems = newItems
     }
+    
+    /// Get products by group
+    /// - Parameter group: The group to get
+    ///
+    /// The products will be sorted by price
     public func getProducts(_ group:String) async -> [SGProduct]{
         if Self.purchaseItems.isEmpty{
             await SGPurchases.loadItems()
