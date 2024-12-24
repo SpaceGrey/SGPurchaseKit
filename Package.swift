@@ -16,6 +16,9 @@ let package = Package(
         .library(
             name: "SGPurchaseKit",
             targets: ["SGPurchaseKit"]),
+    ], dependencies: [
+        // Add KeychainSwift as a dependency
+        .package(url: "https://github.com/evgenyneu/keychain-swift.git", from: "22.0.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

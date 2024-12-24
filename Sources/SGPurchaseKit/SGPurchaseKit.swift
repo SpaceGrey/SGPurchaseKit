@@ -1,21 +1,38 @@
 import Foundation
 import StoreKit
+import KeychainSwift
 @MainActor
 public class SGPurchases{
     public enum StoreError: Error {
         case failedVerification
     }
     static var purchaseItems:Set<SGProduct> = []
-    var updateListenerTask: Task<Void, Error>? = nil
     static var purchaseItemsString:[String:[String]] = [:]
     public static let shared = SGPurchases()
+    public static var offlinePolicy = OfflinePolicy.off
+    var updateListenerTask: Task<Void, Error>? = nil
+    let expired:Bool
+    let lastCheckedTime = "SGPurchaseKitExpiredDate"
+    private let keyChain = KeychainSwift()
     private init(){
         // Listen for transactions
-        print("shared instance created")
+        print(Self.offlinePolicy)
+        switch Self.offlinePolicy {
+        case .off:
+            expired = true
+        case .days(let d):
+            if let last = keyChain.get(lastCheckedTime),let lastCheckedDate = Double(last) {
+                let expiredDate = lastCheckedDate + Double(d * 24 * 60 * 60)
+                expired = Date().timeIntervalSince1970 > expiredDate
+            } else {
+                expired = true
+            }
+        }
         updateListenerTask = listenForTransactions()
     }
         
     /// Load purchase items using purchase id from a plist file.
+    ///
     /// The structure of plist is like this:
     /// ```
     /// {
@@ -43,13 +60,13 @@ public class SGPurchases{
                 purchaseItemsString = items
                 
             }
-            await loadItems()
+            try? await loadItems()
         }
     }
     /// load purchase items from the plist file that you passed in `initItems(from:)`
     ///
     /// in case the `initItems` load failed, you can call this function to reload the items.
-    public static func loadItems() async {
+    public static func loadItems() async throws {
         // Load products from purchase id
         if purchaseItemsString.isEmpty{
             assertionFailure("purchaseItemsString is empty")
@@ -58,7 +75,10 @@ public class SGPurchases{
         if Self.purchaseItems.isEmpty{
             var tempPurchaseItems:Set<SGProduct> = []
             for (key, value) in purchaseItemsString{
-                let products = (try? await Product.products(for: value)) ?? []
+                let products = try await Product.products(for: value)
+                if products.isEmpty{
+                    throw StoreKitError.networkError(URLError(.cannotConnectToHost))
+                }
                 for product in products{
                     tempPurchaseItems.insert(SGProduct(productId: product.id, group: key,product: product))
                     print("group:\(key) product: \(product.id) loaded")
@@ -130,11 +150,20 @@ public class SGPurchases{
         
     }
     
-    /// Check if a group is purchased
+    /// Check if a group is purchased, config the offline policy in ``SGPurchases.offlinePolicy``
     /// - Parameter group: The group to check
-    public func checkGroupStatus(_ group:String) async -> Bool{
+    public func checkGroupStatus(_ group:String) async throws -> Bool{
         if Self.purchaseItems.isEmpty{
-            await SGPurchases.loadItems()
+            do {
+                try await SGPurchases.loadItems()
+            }
+            catch {
+                if let e = error as? StoreKitError, case .networkError(let urlError) = e {
+                    if !expired {
+                        throw error
+                    }
+                }
+            }
         }
         await updateCustomerProductStatus()
         let result = Self.purchaseItems.contains(where: { $0.group == group && $0.purchased == true})
@@ -164,6 +193,11 @@ public class SGPurchases{
                 print("Transaction failed verification")
             }
         }
+        if !purchasedIDs.isEmpty{
+            keyChain.set(String(Date().timeIntervalSince1970), forKey: lastCheckedTime)
+        } else {
+            keyChain.delete(lastCheckedTime)
+        }
         var newItems:Set<SGProduct> = []
         for item in Self.purchaseItems{
             if purchasedIDs.contains(item.productId){
@@ -179,9 +213,9 @@ public class SGPurchases{
     /// - Parameter group: The group to get
     ///
     /// The products will be sorted by price
-    public func getProducts(_ group:String) async -> [SGProduct]{
+    public func getProducts(_ group:String) async throws -> [SGProduct]{
         if Self.purchaseItems.isEmpty{
-            await SGPurchases.loadItems()
+            try await SGPurchases.loadItems()
         }
         var items = Array(Self.purchaseItems.filter({$0.group == group}))
         items.sort { l, r in

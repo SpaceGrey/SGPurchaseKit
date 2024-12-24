@@ -22,3 +22,12 @@ public struct SGProduct:Hashable{
         hasher.combine(productId)
     }
 }
+
+/// The offline policy for a storeKit purchase.
+public enum OfflinePolicy{
+    /// Call ``SGPurchases.shared.checkGroupStatus(_:)`` will immediately be false  if no internet connection instead of throwing the error.
+    case off
+    
+    /// Call ``SGPurchases.shared.checkGroupStatus`` will throw an error if no internet connection in specified days then expired.
+    case days(Int)
+}
