@@ -7,27 +7,29 @@
 
 import Foundation
 import StoreKit
-public struct SGProduct:Hashable{
+public class SGProduct:Hashable,Equatable{
     let productId:String
     let group:String
-    var purchased = false
-    public let product:Product
-    init(productId:String, group:String,product:Product,purchased:Bool = false) {
+    var purchaseInfo:PurchaseInfo? = nil
+    public var product:Product? = nil
+    init(productId:String, group:String) {
         self.productId = productId
         self.group = group
-        self.product = product
-        self.purchased = purchased
+        self.purchaseInfo = PurchaseInfo.load(productId)
     }
     public func hash(into hasher: inout Hasher) {
         hasher.combine(productId)
     }
+    public static func == (lhs: SGProduct, rhs: SGProduct) -> Bool {
+        return lhs.productId == rhs.productId
+    }
 }
 
-/// The offline policy for a storeKit purchase.
-public enum OfflinePolicy{
-    /// Call ``SGPurchases.shared.checkGroupStatus(_:)`` will immediately be false  if no internet connection instead of throwing the error.
+/// The policy for when there’s no purchase or can not retrieve purchase info
+public enum FallbackPolicy{
+    /// disable fallback, directly return false
     case off
-    
-    /// Call ``SGPurchases.shared.checkGroupStatus`` will throw an error if no internet connection in specified days then expired.
+    /// use cache data to keep purchase for specific days.
     case days(Int)
 }
+

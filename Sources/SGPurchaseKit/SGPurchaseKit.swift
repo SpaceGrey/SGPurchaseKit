@@ -5,29 +5,16 @@ import KeychainSwift
 public class SGPurchases{
     public enum StoreError: Error {
         case failedVerification
+        case productNotLoaded
     }
-    static var purchaseItems:Set<SGProduct> = []
-    static var purchaseItemsString:[String:[String]] = [:]
+
     public static let shared = SGPurchases()
-    public static var offlinePolicy = OfflinePolicy.off
+    public static var fallbackPolicy = FallbackPolicy.off
+    private static var productManager = SGProductManager()
     var updateListenerTask: Task<Void, Error>? = nil
-    let expired:Bool
-    let lastCheckedTime = "SGPurchaseKitExpiredDate"
-    private let keyChain = KeychainSwift()
+    
     private init(){
         // Listen for transactions
-        print(Self.offlinePolicy)
-        switch Self.offlinePolicy {
-        case .off:
-            expired = true
-        case .days(let d):
-            if let last = keyChain.get(lastCheckedTime),let lastCheckedDate = Double(last) {
-                let expiredDate = lastCheckedDate + Double(d * 24 * 60 * 60)
-                expired = Date().timeIntervalSince1970 > expiredDate
-            } else {
-                expired = true
-            }
-        }
         updateListenerTask = listenForTransactions()
     }
         
@@ -46,48 +33,14 @@ public class SGPurchases{
     ///}
     /// ```
     public static func initItems(from url:URL){
-        Task.detached{
-            // Load plist file from url
-            guard let data = try? Data(contentsOf: url) else{
-                assertionFailure("Failed to load plist file from \(url)")
-                return
-            }
-            guard let items = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String:[String]] else{
-                assertionFailure("Failed to parse plist file")
-                return
-            }
-            await MainActor.run{
-                purchaseItemsString = items
-                
-            }
-            try? await loadItems()
-        }
+        Self.productManager.initItems(from: url)
     }
     /// load purchase items from the plist file that you passed in `initItems(from:)`
     ///
     /// in case the `initItems` load failed, you can call this function to reload the items.
-    public static func loadItems() async throws {
+    public static func loadItems() async {
         // Load products from purchase id
-        if purchaseItemsString.isEmpty{
-            assertionFailure("purchaseItemsString is empty")
-            return
-        }
-        if Self.purchaseItems.isEmpty{
-            var tempPurchaseItems:Set<SGProduct> = []
-            for (key, value) in purchaseItemsString{
-                let products = try await Product.products(for: value)
-                if products.isEmpty{
-                    throw StoreKitError.networkError(URLError(.cannotConnectToHost))
-                }
-                for product in products{
-                    tempPurchaseItems.insert(SGProduct(productId: product.id, group: key,product: product))
-                    print("group:\(key) product: \(product.id) loaded")
-                }
-            }
-            if Self.purchaseItems.isEmpty{
-                Self.purchaseItems = tempPurchaseItems
-            }
-        }
+        await Self.productManager.loadItems()
     }
     
     //Generics - check the verificationResults
@@ -108,12 +61,9 @@ public class SGPurchases{
             for await result in Transaction.updates {
                 do {
                     let transaction = try await self.checkVerified(result)
-                    print("remote transaction \(transaction.productID)")
-                    await self.updateCustomerProductStatus()
-                    //Always finish a transaction
+                    await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
                 } catch {
-                    //storekit has a transaction that fails verification, don't delvier content to the user
                     print("Transaction failed verification")
                 }
             }
@@ -126,7 +76,10 @@ public class SGPurchases{
     /// You don't need to use the output   `Transaction`, you can use `checkGroupStatus` after `purchase` instead.
     public func purchase(_ sgProduct: SGProduct) async throws -> Transaction? {
         //make a purchase request - optional parameters available
-        let product = sgProduct.product
+        
+        guard let product = sgProduct.product else {
+            throw StoreError.productNotLoaded
+        }
         let result = try await product.purchase()
         
         // check the results
@@ -150,25 +103,10 @@ public class SGPurchases{
         
     }
     
-    /// Check if a group is purchased, config the offline policy in ``SGPurchases.offlinePolicy``
+    /// Check if a group is purchased, config the offline policy in ``SGPurchases/fallbackPolicy``
     /// - Parameter group: The group to check
-    public func checkGroupStatus(_ group:String) async throws -> Bool{
-        if Self.purchaseItems.isEmpty{
-            do {
-                try await SGPurchases.loadItems()
-            }
-            catch {
-                if let e = error as? StoreKitError, case .networkError(let urlError) = e {
-                    if !expired {
-                        throw error
-                    }
-                }
-            }
-        }
-        await updateCustomerProductStatus()
-        let result = Self.purchaseItems.contains(where: { $0.group == group && $0.purchased == true})
-        print("group \(group) purchased \(result)")
-        return result
+    public func checkGroupStatus(_ group:String) async -> Bool{
+        return await Self.productManager.checkGroupStatus(group)
     }
     
     /// Restore purchase
@@ -180,48 +118,27 @@ public class SGPurchases{
     
     
     func updateCustomerProductStatus() async {
-        var purchasedIDs:[String] = []
         //iterate through all the user's purchased products
         for await result in Transaction.currentEntitlements {
             do {
                 //again check if transaction is verified
                 let transaction = try checkVerified(result)
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
-                print("new transaction \(transaction.productID)")
-                purchasedIDs.append(transaction.productID)
+                SGPurchases.productManager.updateProductStatus(transaction)
             } catch {
                 print("Transaction failed verification")
             }
+            
         }
-        if !purchasedIDs.isEmpty{
-            keyChain.set(String(Date().timeIntervalSince1970), forKey: lastCheckedTime)
-        } else {
-            keyChain.delete(lastCheckedTime)
-        }
-        var newItems:Set<SGProduct> = []
-        for item in Self.purchaseItems{
-            if purchasedIDs.contains(item.productId){
-                newItems.insert(SGProduct(productId: item.productId, group: item.group, product: item.product, purchased: true))
-            } else {
-                newItems.insert(SGProduct(productId: item.productId, group: item.group, product: item.product, purchased: false))
-            }
-        }
-        Self.purchaseItems = newItems
     }
     
     /// Get products by group
     /// - Parameter group: The group to get
     ///
     /// The products will be sorted by price
-    public func getProducts(_ group:String) async throws -> [SGProduct]{
-        if Self.purchaseItems.isEmpty{
-            try await SGPurchases.loadItems()
-        }
-        var items = Array(Self.purchaseItems.filter({$0.group == group}))
-        items.sort { l, r in
-            l.product.price < r.product.price
-        }
-        return items
+    public func getProducts(_ group:String) async -> [SGProduct]{
+        return await Self.productManager.getProducts(group)
+    
     }
 }
 
