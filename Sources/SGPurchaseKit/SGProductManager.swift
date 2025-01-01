@@ -30,7 +30,6 @@ class SGProductManager {
             await MainActor.run{
                 self.purchaseItemsString = items
             }
-            await self.loadItems()
         }
     }
     func loadItems() async {
@@ -40,9 +39,6 @@ class SGProductManager {
         // Load products from purchase id
         for (key, value) in await purchaseItemsString {
             let products = (try? await Product.products(for: value)) ?? []
-//            if products.isEmpty {
-//                throw StoreKitError.networkError(URLError(.cannotConnectToHost))
-//            }
             for product in products {
                 let p = SGProduct(productId: product.id, group: key)
                 p.product = product
@@ -61,7 +57,8 @@ class SGProductManager {
             return
         }
         product.purchaseInfo = SGProduct.PurchaseInfo(transaction)
-        items.insert(product)
+        print("product: \(product.productId), status: \(product.purchaseInfo)")
+        
         
     }
     @MainActor

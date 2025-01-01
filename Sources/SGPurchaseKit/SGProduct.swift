@@ -16,12 +16,15 @@ public class SGProduct:Hashable,Equatable{
         self.productId = productId
         self.group = group
         self.purchaseInfo = PurchaseInfo.load(productId)
+        if let p = purchaseInfo{
+            print("load \(productId) info from cache \(p)")
+        }
     }
     public func hash(into hasher: inout Hasher) {
         hasher.combine(productId)
     }
     public static func == (lhs: SGProduct, rhs: SGProduct) -> Bool {
-        return lhs.productId == rhs.productId
+        return lhs.productId == rhs.productId && lhs.purchaseInfo == rhs.purchaseInfo
     }
 }
 
@@ -32,4 +35,5 @@ public enum FallbackPolicy{
     /// use cache data to keep purchase for specific days.
     case days(Int)
 }
+
 

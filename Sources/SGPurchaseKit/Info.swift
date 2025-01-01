@@ -9,7 +9,7 @@ import Foundation
 import StoreKit
 import KeychainSwift
 extension SGProduct{
-    public struct PurchaseInfo:Codable{
+    public struct PurchaseInfo:Codable,Equatable{
         private static let PREFIX = "SGProduct.PurchaseInfo"
         private static let keyChain = KeychainSwift()
         private var fetchTime:Double
@@ -56,4 +56,32 @@ extension SGProduct{
         }
     }
 }
+extension SGProduct.PurchaseInfo: CustomStringConvertible {
+    public var description: String {
+        let dateFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+            return formatter
+        }()
 
+        let fetchDate = Date(timeIntervalSince1970: fetchTime)
+        let fetchDateString = dateFormatter.string(from: fetchDate)
+
+        let expireDateString: String
+        if let expireTime = expireTime {
+            let expireDate = Date(timeIntervalSince1970: expireTime)
+            expireDateString = dateFormatter.string(from: expireDate)
+        } else {
+            expireDateString = "N/A"
+        }
+
+        return """
+        
+        active: \(active)
+        isCache: \(isCache)
+        fetchTime: \(fetchDateString)
+        expireTime: \(expireDateString)
+        
+        """
+    }
+}

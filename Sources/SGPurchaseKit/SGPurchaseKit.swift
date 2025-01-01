@@ -35,13 +35,6 @@ public class SGPurchases{
     public static func initItems(from url:URL){
         Self.productManager.initItems(from: url)
     }
-    /// load purchase items from the plist file that you passed in `initItems(from:)`
-    ///
-    /// in case the `initItems` load failed, you can call this function to reload the items.
-    public static func loadItems() async {
-        // Load products from purchase id
-        await Self.productManager.loadItems()
-    }
     
     //Generics - check the verificationResults
     func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
