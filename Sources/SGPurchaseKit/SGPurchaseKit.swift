@@ -7,9 +7,9 @@ public class SGPurchases{
         case failedVerification
         case productNotLoaded
     }
-
     public static let shared = SGPurchases()
-    public static var fallbackPolicy = FallbackPolicy.off
+    public static nonisolated(unsafe) var fallbackPolicy = FallbackPolicy.off
+    public static nonisolated(unsafe) var enableLog = true
     private static var productManager = SGProductManager()
     var updateListenerTask: Task<Void, Error>? = nil
     
@@ -57,7 +57,7 @@ public class SGPurchases{
                     await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
                 } catch {
-                    print("Transaction failed verification")
+                    Logger.log("Transaction failed verification")
                 }
             }
         }
@@ -106,7 +106,7 @@ public class SGPurchases{
     /// Restore purchase
     ///
     /// The function will sync the data with App Store, if there's remote transaction, the listener will update the user's purchase automatically.
-    public func restorePurchase()async{
+    public func restorePurchase() async {
         try? await AppStore.sync()
     }
     
@@ -120,7 +120,7 @@ public class SGPurchases{
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
                 await SGPurchases.productManager.updateProductStatus(transaction)
             } catch {
-                print("Transaction failed verification")
+                Logger.log("Transaction failed verification")
             }
         }
     }

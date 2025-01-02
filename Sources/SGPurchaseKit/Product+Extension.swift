@@ -11,7 +11,7 @@ import SwiftUICore
 public extension StoreKit.Product {
     /// Calculates the price per month for a subscription product.
     /// - Returns: The price per month as a `Decimal`, or `nil` if the product is not a subscription.
-    public var pricePerMonth: Decimal? {
+    var pricePerMonth: Decimal? {
         guard let subscription = subscription else {
             return nil // Return nil if the product is not a subscription.
         }

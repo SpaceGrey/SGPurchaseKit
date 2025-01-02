@@ -13,7 +13,7 @@ class SGProductManager {
     private var items: Set<SGProduct> = []
     @MainActor
     private var purchaseItemsString: [String: [String]] = [:]
-    private var initTask: Task.Handle<Void, Never>? = nil
+    private var initTask: Task<Void, Never>? = nil
     @MainActor
     var needReload:Bool{
         return items.filter{$0.product == nil}.count > 0 || items.isEmpty
@@ -51,7 +51,7 @@ class SGProductManager {
                 let _ = await MainActor.run{
                     items.insert(p)
                 }
-                print("group:\(key) product: \(product.id) loaded")
+                Logger.log("group:\(key) product: \(product.id) loaded")
             }
         }
     }
@@ -64,7 +64,7 @@ class SGProductManager {
             return
         }
         product.purchaseInfo = SGProduct.PurchaseInfo(transaction)
-        print("product: \(product.productId), status: \(product.purchaseInfo)")
+        Logger.log("product: \(product.productId), status: \(String(describing: product.purchaseInfo))")
         
         
     }
@@ -84,7 +84,7 @@ class SGProductManager {
     func checkGroupStatus(_ group: String) async -> Bool{
         let purchasedItems = await getProducts(group).filter {$0.purchaseInfo?.hasPurchased ?? false}
         if !purchasedItems.isEmpty {
-            print("✅group purchased with \(purchasedItems.map(\.productId).joined(separator: " && "))")
+            Logger.log("✅group purchased with \(purchasedItems.map(\.productId).joined(separator: " && "))")
             return true
         } else {
             return false

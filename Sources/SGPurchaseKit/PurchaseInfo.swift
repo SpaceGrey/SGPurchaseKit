@@ -16,7 +16,6 @@ extension SGProduct{
         private var active:Bool = true
         private var expireTime:Double?
         private var isCache:Bool = true
-        @MainActor
         var hasPurchased:Bool{
             guard active else {
                 return false
