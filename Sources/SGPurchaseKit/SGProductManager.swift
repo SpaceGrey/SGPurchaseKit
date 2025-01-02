@@ -13,8 +13,13 @@ class SGProductManager {
     private var items: Set<SGProduct> = []
     @MainActor
     private var purchaseItemsString: [String: [String]] = [:]
+    private var initTask: Task.Handle<Void, Never>? = nil
+    @MainActor
+    var needReload:Bool{
+        return items.filter{$0.product == nil}.count > 0 || items.isEmpty
+    }
     func initItems(from url: URL) {
-        Task.detached {
+        initTask = Task.detached {
             // Load plist file from url
             guard let data = try? Data(contentsOf: url) else {
                 assertionFailure("Failed to load plist file from \(url)")
@@ -33,6 +38,7 @@ class SGProductManager {
         }
     }
     func loadItems() async {
+        await initTask?.value
         guard await needReload else {
             return
         }
@@ -50,7 +56,8 @@ class SGProductManager {
         }
     }
     @MainActor
-    func updateProductStatus(_ transaction: StoreKit.Transaction) {
+    func updateProductStatus(_ transaction: StoreKit.Transaction) async {
+        await loadItems()
         let id = transaction.productID
         let item = items.first { $0.productId == id }
         guard let product = item else {
@@ -61,14 +68,8 @@ class SGProductManager {
         
         
     }
-    @MainActor
-    var needReload:Bool{
-        return items.filter{$0.product == nil}.count > 0 || items.isEmpty
-    }
     func getProducts(_ group: String) async -> [SGProduct] {
-        if await needReload {
-            await loadItems()
-        }
+        await loadItems()
         var items = await Array(self.items)
         items = items.filter { $0.group == group}
         items.sort{l, r in
@@ -81,6 +82,15 @@ class SGProductManager {
     }
     @MainActor
     func checkGroupStatus(_ group: String) async -> Bool{
-        return await !getProducts(group).filter {$0.purchaseInfo?.hasPurchased ?? false}.isEmpty
+        let purchasedItems = await getProducts(group).filter {$0.purchaseInfo?.hasPurchased ?? false}
+        if !purchasedItems.isEmpty {
+            print("✅group purchased with \(purchasedItems.map(\.productId).joined(separator: " && "))")
+            return true
+        } else {
+            return false
+        }
+    }
+    func removeCache(){
+
     }
 }

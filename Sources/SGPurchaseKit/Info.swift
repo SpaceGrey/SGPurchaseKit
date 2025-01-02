@@ -54,6 +54,9 @@ extension SGProduct{
             }
             return nil
         }
+        static func remove(_ productId:String){
+            keyChain.delete("\(PREFIX).\(productId)")
+        }
     }
 }
 extension SGProduct.PurchaseInfo: CustomStringConvertible {

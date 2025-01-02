@@ -20,7 +20,7 @@ public class SGPurchases{
         
     /// Load purchase items using purchase id from a plist file.
     ///
-    /// The structure of plist is like this:
+    /// The structure of plist should be like this:
     /// ```
     /// {
     ///    "live photo":[
@@ -99,6 +99,7 @@ public class SGPurchases{
     /// Check if a group is purchased, config the offline policy in ``SGPurchases/fallbackPolicy``
     /// - Parameter group: The group to check
     public func checkGroupStatus(_ group:String) async -> Bool{
+        await updateCustomerProductStatus()
         return await Self.productManager.checkGroupStatus(group)
     }
     
@@ -117,11 +118,10 @@ public class SGPurchases{
                 //again check if transaction is verified
                 let transaction = try checkVerified(result)
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
-                SGPurchases.productManager.updateProductStatus(transaction)
+                await SGPurchases.productManager.updateProductStatus(transaction)
             } catch {
                 print("Transaction failed verification")
             }
-            
         }
     }
     
@@ -132,6 +132,13 @@ public class SGPurchases{
     public func getProducts(_ group:String) async -> [SGProduct]{
         return await Self.productManager.getProducts(group)
     
+    }
+    ///Remove all product purchases status cache and retrieve the latest status
+    public func refreshCache(){
+        Self.productManager.removeCache()
+        Task{
+            await updateCustomerProductStatus()
+        }
     }
 }
 

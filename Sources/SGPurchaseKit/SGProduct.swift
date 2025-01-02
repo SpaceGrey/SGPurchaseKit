@@ -26,6 +26,9 @@ public class SGProduct:Hashable,Equatable{
     public static func == (lhs: SGProduct, rhs: SGProduct) -> Bool {
         return lhs.productId == rhs.productId && lhs.purchaseInfo == rhs.purchaseInfo
     }
+    func removeCache(){
+        PurchaseInfo.remove(productId)
+    }
 }
 
 /// The policy for when there’s no purchase or can not retrieve purchase info
