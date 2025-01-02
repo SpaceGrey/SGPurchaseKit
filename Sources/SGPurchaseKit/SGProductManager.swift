@@ -90,7 +90,8 @@ class SGProductManager {
             return false
         }
     }
+    @MainActor
     func removeCache(){
-
+        items.forEach{$0.removeCache()}
     }
 }

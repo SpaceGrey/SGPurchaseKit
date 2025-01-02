@@ -128,7 +128,7 @@ public class SGPurchases{
     /// Get products by group
     /// - Parameter group: The group to get
     ///
-    /// The products will be sorted by price
+    /// The products will be sorted by price.
     public func getProducts(_ group:String) async -> [SGProduct]{
         return await Self.productManager.getProducts(group)
     

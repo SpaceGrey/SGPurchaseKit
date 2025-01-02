@@ -8,9 +8,12 @@
 import Foundation
 import StoreKit
 public class SGProduct:Hashable,Equatable{
+    /// the product id you set in App Store Connect
     let productId:String
+    /// the group you set in your init plist file.
     let group:String
     var purchaseInfo:PurchaseInfo? = nil
+    /// associated StoreKit product
     public var product:Product? = nil
     init(productId:String, group:String) {
         self.productId = productId
@@ -31,9 +34,9 @@ public class SGProduct:Hashable,Equatable{
     }
 }
 
-/// The policy for when there’s no purchase or can not retrieve purchase info
+/// The policy for when there’s no purchase(user switch app store account) or can not retrieve purchase info
 public enum FallbackPolicy{
-    /// disable fallback, directly return false
+    /// disable fallback, directly return no purchase info.
     case off
     /// use cache data to keep purchase for specific days.
     case days(Int)
