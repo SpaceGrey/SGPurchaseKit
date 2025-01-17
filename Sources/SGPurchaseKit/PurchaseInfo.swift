@@ -24,6 +24,13 @@ extension SGProduct{
                 return true
             }
             switch SGPurchases.fallbackPolicy {
+            case .alwaysKeepPurchase:
+                let now = Date.now.timeIntervalSince1970
+                if now > expireTime ?? .infinity {
+                    return false
+                } else {
+                    return true
+                }
             case .days(let days):
                 let now = Date.now.timeIntervalSince1970
                 let cacheExpiredDate = fetchTime + Double(days * 24 * 3600)

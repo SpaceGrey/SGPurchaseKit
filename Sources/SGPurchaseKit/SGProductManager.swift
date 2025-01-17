@@ -49,6 +49,7 @@ class SGProductManager {
                 let p = SGProduct(productId: product.id, group: key)
                 p.product = product
                 let _ = await MainActor.run{
+                    items.remove(p)
                     items.insert(p)
                 }
                 Logger.log("group:\(key) product: \(product.id) loaded")

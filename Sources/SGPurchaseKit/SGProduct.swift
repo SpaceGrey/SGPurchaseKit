@@ -27,7 +27,7 @@ public class SGProduct:Hashable,Equatable{
         hasher.combine(productId)
     }
     public static func == (lhs: SGProduct, rhs: SGProduct) -> Bool {
-        return lhs.productId == rhs.productId && lhs.purchaseInfo == rhs.purchaseInfo
+        return lhs.productId == rhs.productId
     }
     func removeCache(){
         PurchaseInfo.remove(productId)
@@ -40,6 +40,8 @@ public enum FallbackPolicy{
     case off
     /// use cache data to keep purchase for specific days.
     case days(Int)
+    /// use cache to keep the user's purchase info forever, please be cautious for using this, some user may escaping the payment using other's account.
+    case alwaysKeepPurchase
 }
 
 
