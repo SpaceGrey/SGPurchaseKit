@@ -45,14 +45,14 @@ class SGProductManager {
         // Load products from purchase id
         for (key, value) in await purchaseItemsString {
             let products = (try? await Product.products(for: value)) ?? []
-            for product in products {
-                let p = SGProduct(productId: product.id, group: key)
-                p.product = product
+            for productID in value {
+                let p = SGProduct(productId: productID, group: key)
+                p.product = products.first{$0.id == productID}
                 let _ = await MainActor.run{
                     items.remove(p)
                     items.insert(p)
                 }
-                Logger.log("group:\(key) product: \(product.id) loaded")
+                Logger.log("group:\(key) product: \(productID) loaded")
             }
         }
     }
