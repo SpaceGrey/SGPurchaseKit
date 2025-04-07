@@ -12,7 +12,7 @@ class SGProductManager {
     @MainActor
     private var items: Set<SGProduct> = []
     @MainActor
-    private var purchaseItemsString: [String: [String]] = [:]
+    private var plistModels: [PlistModel] = []
     private var initTask: Task<Void, Never>? = nil
     @MainActor
     var needReload:Bool{
@@ -26,14 +26,16 @@ class SGProductManager {
                 return
             }
             guard
-                let items = try? PropertyListSerialization.propertyList(
-                    from: data, options: [], format: nil) as? [String: [String]]
+                let list = try? PropertyListDecoder().decode([String:[PlistModel.PlistItem]].self, from: data)
             else {
                 assertionFailure("Failed to parse plist file")
                 return
             }
+            let model = list.map{key,value in
+                PlistModel(groupName:key, items:value)
+            }
             await MainActor.run{
-                self.purchaseItemsString = items
+                self.plistModels = model
             }
         }
     }
@@ -43,7 +45,9 @@ class SGProductManager {
             return
         }
         // Load products from purchase id
-        for (key, value) in await purchaseItemsString {
+        for model in await plistModels {
+            let key = model.groupName
+            let value = model.stringItems
             let products = (try? await Product.products(for: value)) ?? []
             for productID in value {
                 let p = SGProduct(productId: productID, group: key)
@@ -69,10 +73,12 @@ class SGProductManager {
         
         
     }
-    func getProducts(_ group: String) async -> [SGProduct] {
+    
+    func getProducts(_ group: String,forDisplayOnly:Bool) async -> [SGProduct] {
         await loadItems()
+        let model = await plistModels.first{$0.groupName == group}
         var items = await Array(self.items)
-        items = items.filter { $0.group == group}
+        items = items.filter { $0.group == group && (model?.checkDisplay(of:$0) ?? true || !forDisplayOnly) }
         items.sort{l, r in
             guard let l = l.product, let r = r.product else {
                 return l.productId < r.productId
@@ -83,7 +89,7 @@ class SGProductManager {
     }
     @MainActor
     func checkGroupStatus(_ group: String) async -> Bool{
-        let purchasedItems = await getProducts(group).filter {$0.purchaseInfo?.hasPurchased ?? false}
+        let purchasedItems = await getProducts(group,forDisplayOnly:false).filter {$0.purchaseInfo?.hasPurchased ?? false}
         if !purchasedItems.isEmpty {
             Logger.log("✅group purchased with \(purchasedItems.map(\.productId).joined(separator: " && "))")
             return true

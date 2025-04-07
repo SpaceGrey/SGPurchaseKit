@@ -127,10 +127,10 @@ public class SGPurchases{
     
     /// Get products by group
     /// - Parameter group: The group to get
-    ///
+    /// - Parameter forDisplayOnly: if only load the items that you set display to true in the plist file.
     /// The products will be sorted by price.
-    public func getProducts(_ group:String) async -> [SGProduct]{
-        return await Self.productManager.getProducts(group)
+    public func getProducts(_ group:String,forDisplayOnly:Bool = true) async -> [SGProduct]{
+        return await Self.productManager.getProducts(group,forDisplayOnly: forDisplayOnly)
     
     }
     ///Remove all product purchases status cache and retrieve the latest status
