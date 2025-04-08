@@ -33,22 +33,38 @@ Firstly you need to create your `.plist` in your target.
 The structure is like:
 
 ```xml
-<plist version="1.0">
 <dict>
 	<key>PurchaseGroup1</key>
 	<array>
-		<string>com.item1.year</string>
-		<string>com.item1.lifetime</string>
+		<dict>
+      <key>id</key> <string>com.item1.year</string>
+      <key>display</key> <boolean>YES</boolean>
+    </dict>
+    
+		<dict>
+      <key>id</key> <string>com.item1.lifetime</string>
+      <key>display</key> <boolean>NO</boolean>
+    </dict>
 	</array>
+  
 	<key>PurchaseGroup2</key>
 	<array>
-	<string>com.item2.month</string>
+	<dict>
+      <key>id</key> <string>com.item2.year</string>
+      <key>display</key> <boolean>YES</boolean>
+    </dict>
 	</array>
 </dict>
 </plist>
 ```
 
-It will be decoded into `[String:[String]]` dictionary.
+1. The root dict key is the purchase group name.
+
+2. Each group has an array of products.
+
+3. Each product is a dict containing the id and a boolean to decide if it should be provided to users when calling `getProducts`.
+
+   
 
 ### Init Your Products
 
@@ -59,6 +75,8 @@ let purchaseListURL = Bundle.main.url(forResource: "PurchaseItems", withExtensio
 SGPurchases.initItems(from: purchaseListURL)
 SGPurchases.fallbackPolicy = .days(4)
 SGPurchases.enableLog = true
+//by setting default group, you can emit the group parameter in following methods.
+SGPurchases.defaultGroup = "PurchaseGroup1"
         
 ```
 
@@ -76,10 +94,12 @@ if await SGPurchases.shared.checkGroupStatus("PurchaseGroup1"){
 
 ### Display Your Products on Paywall
 
-If you want to get products for certain groups, call `SGPurchases.shared.getProducts`, it returns a `SGProduct` array that contains the StoreKit product. It's sorted by price from low to high by default.
+If you want to get products for certain groups, call `SGPurchases.shared.getProducts`, it returns a `SGProduct` array that contains the StoreKit product. It's sorted by price from low to high by default. 
+
+If you set the `forDisplayOnly`, it will remove the product whose plist display property equals to NO.
 
 ```swift
-packages = await SGPurchases.shared.getProducts("PurchaseGroup1")
+packages = await SGPurchases.shared.getProducts("PurchaseGroup1",forDisplayOnly:true)
 ```
 
 ### Make a Purchase
