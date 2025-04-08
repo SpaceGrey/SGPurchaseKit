@@ -67,6 +67,7 @@ public class SGPurchases{
     /// - Returns: The current transaction if succeed, nil if user cancelled or pending
     ///
     /// You don't need to use the output   `Transaction`, you can use `checkGroupStatus` after `purchase` instead.
+    @discardableResult
     public func purchase(_ sgProduct: SGProduct) async throws -> Transaction? {
         //make a purchase request - optional parameters available
         
