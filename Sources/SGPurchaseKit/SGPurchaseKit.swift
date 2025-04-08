@@ -10,6 +10,8 @@ public class SGPurchases{
     public static let shared = SGPurchases()
     public static nonisolated(unsafe) var fallbackPolicy = FallbackPolicy.off
     public static nonisolated(unsafe) var enableLog = true
+    /// Set the default purchase group, and you don't need to pass the group when retrieve the items and check purchase status.
+    public static nonisolated(unsafe) var defaultGroup:String?
     private static var productManager = SGProductManager()
     var updateListenerTask: Task<Void, Error>? = nil
     
@@ -67,6 +69,7 @@ public class SGPurchases{
     /// - Returns: The current transaction if succeed, nil if user cancelled or pending
     ///
     /// You don't need to use the output   `Transaction`, you can use `checkGroupStatus` after `purchase` instead.
+    @discardableResult
     public func purchase(_ sgProduct: SGProduct) async throws -> Transaction? {
         //make a purchase request - optional parameters available
         
@@ -98,9 +101,11 @@ public class SGPurchases{
     
     /// Check if a group is purchased, config the offline policy in ``SGPurchases/fallbackPolicy``
     /// - Parameter group: The group to check
-    public func checkGroupStatus(_ group:String) async -> Bool{
+    public func checkGroupStatus(_ g:String? = nil) async -> Bool{
+        let group = g ?? Self.defaultGroup
+        assert(group != nil, "No Group Detected, Config the defaultGroup or pass the group name")
         await updateCustomerProductStatus()
-        return await Self.productManager.checkGroupStatus(group)
+        return await Self.productManager.checkGroupStatus(group!)
     }
     
     /// Restore purchase
@@ -129,8 +134,10 @@ public class SGPurchases{
     /// - Parameter group: The group to get
     /// - Parameter forDisplayOnly: if only load the items that you set display to true in the plist file.
     /// The products will be sorted by price.
-    public func getProducts(_ group:String,forDisplayOnly:Bool = true) async -> [SGProduct]{
-        return await Self.productManager.getProducts(group,forDisplayOnly: forDisplayOnly)
+    public func getProducts(_ g:String? = nil,forDisplayOnly:Bool = true) async -> [SGProduct]{
+        let group = g ?? Self.defaultGroup
+        assert(group != nil, "No Group Detected, Config the defaultGroup or pass the group name")
+        return await Self.productManager.getProducts(group!, forDisplayOnly: forDisplayOnly)
     
     }
     ///Remove all product purchases status cache and retrieve the latest status
