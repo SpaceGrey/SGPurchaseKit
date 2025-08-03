@@ -137,10 +137,15 @@ public class SGPurchases{
     }
     
     func postProductStatusNotification() async{
-        if let group = Self.defaultGroup {
+        // 向所有分组广播最新的购买状态
+        let groups = await Self.productManager.allGroups()
+        var statuses: [String: Bool] = [:]
+        for group in groups {
             let purchased = await Self.productManager.checkGroupStatus(group)
-            NotificationCenter.default.post(name: .purchaseStatusUpdated, object:nil,userInfo:["purchased":purchased])
+            statuses[group] = purchased
         }
+        let purchaseStatus = PurchaseStatus(groupStatuses: statuses)
+        NotificationCenter.default.post(name: .purchaseStatusUpdated, object:nil, userInfo:["status": purchaseStatus])
     }
     
     /// Get products by group

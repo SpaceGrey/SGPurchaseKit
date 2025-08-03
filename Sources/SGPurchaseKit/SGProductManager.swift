@@ -101,5 +101,12 @@ class SGProductManager {
     func removeCache(){
         items.forEach{$0.removeCache()}
     }
+    
+    /// 返回所有分组名称
+    @MainActor
+    func allGroups() async -> [String] {
+        await initTask?.value
+        return plistModels.map { $0.groupName }
+    }
 }
 

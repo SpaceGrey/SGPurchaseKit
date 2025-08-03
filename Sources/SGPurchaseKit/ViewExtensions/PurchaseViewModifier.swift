@@ -8,37 +8,26 @@
 import SwiftUI
 import Combine
 
-// MARK: - EnvironmentKey & EnvironmentValues
-
-private struct PurchaseStatusKey: EnvironmentKey {
-    static let defaultValue: Bool = false
-}
-
-public extension EnvironmentValues {
-    /// Indicates whether the user has already purchased the content.
-    var purchaseStatus: Bool {
-        get { self[PurchaseStatusKey.self] }
-        set { self[PurchaseStatusKey.self] = newValue }
-    }
-}
-
-// MARK: - ViewModifier
-
-/// A `ViewModifier` that injects the user's purchase status into the view hierarchy.
+/// 一个 `ViewModifier`，将所有分组的购买状态注入到视图层级中。
 ///
-/// Usage:
+/// 用法：
 /// ```swift
 /// ContentView()
-///     .purchaseStatus(group: "live photo")
+///     .purchaseStatus()                     // 使用默认分组
+///     .purchaseStatus(group: "video")    // 指定默认分组
 /// ```
-/// Inside any descendant view, you can access the status via:
+///
+/// 在任意子视图中可通过以下方式获取：
 /// ```swift
-/// @Environment(\.purchaseStatus) private var purchased
+/// @Environment(\.purchaseStatus) private var purchaseStatus
 /// ```
+/// `purchaseStatus.defaultGroupStatus` 表示默认分组的购买状态，
+/// 其他分组的状态可通过 `purchaseStatus["groupName"]` 查询。
 public struct PurchaseViewModifier: ViewModifier {
-    /// The purchase group to check. If `nil`, `SGPurchases.defaultGroup` is used.
+    /// 指定哪个分组作为 *默认* 分组；若为 `nil` 则使用 `SGPurchases.defaultGroup`。
     private let group: String?
-    @State private var purchased: Bool = false
+
+    @State private var state = PurchaseStatus()
 
     public init(group: String? = nil) {
         self.group = group
@@ -46,26 +35,27 @@ public struct PurchaseViewModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
-            .environment(\.purchaseStatus, purchased)
+            .environment(\.purchaseStatus, state)
+            // 监听购买状态更新通知
             .onReceive(NotificationCenter.default.publisher(for: .purchaseStatusUpdated)) { noti in
-                if let p = noti.userInfo?["purchased"] as? Bool {
-                    purchased = p
-                }
+                guard let ps = noti.userInfo?["status"] as? PurchaseStatus else { return }
+                state = ps
             }
+            // 首次进入视图时预加载默认分组的状态
             .task {
-                // Initial query of purchase status
-                let status = await SGPurchases.shared.checkGroupStatus(group)
-                purchased = status
+                let targetGroup = group ?? SGPurchases.defaultGroup
+                if let g = targetGroup {
+                    let purchased = await SGPurchases.shared.checkGroupStatus(g)
+                    state = PurchaseStatus(groupStatuses: [g: purchased])
+                }
             }
     }
 }
 
-// MARK: - View Extension
-
+// MARK: - View 扩展
 public extension View {
-    /// Injects `purchaseStatus` into `EnvironmentValues` so descendant views can access it.
-    /// - Parameter group: The purchase group to check. Defaults to `SGPurchases.defaultGroup`.
-    /// - Returns: A view with purchase status injected.
+    /// 向 `Environment` 注入 `purchaseStatus`，供子视图读取。
+    /// - Parameter group: 指定哪个分组作为 `defaultGroupStatus`，若为空则使用 `SGPurchases.defaultGroup`。
     func purchaseStatus(group: String? = nil) -> some View {
         modifier(PurchaseViewModifier(group: group))
     }
