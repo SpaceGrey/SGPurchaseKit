@@ -102,3 +102,4 @@ class SGProductManager {
         items.forEach{$0.removeCache()}
     }
 }
+

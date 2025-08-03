@@ -62,6 +62,9 @@ public class SGPurchases{
                     Logger.log("Transaction failed verification")
                 }
             }
+            // Diff refresh
+            // Notify listeners that purchase status changed
+            await self.postProductStatusNotification()
         }
     }
     /// Purchase a product
@@ -127,6 +130,16 @@ public class SGPurchases{
             } catch {
                 Logger.log("Transaction failed verification")
             }
+        }
+        //Reload
+        // Notify listeners that purchase status changed
+        await postProductStatusNotification()
+    }
+    
+    func postProductStatusNotification() async{
+        if let group = Self.defaultGroup {
+            let purchased = await Self.productManager.checkGroupStatus(group)
+            NotificationCenter.default.post(name: .purchaseStatusUpdated, object:nil,userInfo:["purchased":purchased])
         }
     }
     
