@@ -53,18 +53,18 @@ public class SGPurchases{
     func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {
             //iterate through any transactions that don't come from a direct call to 'purchase()'
+            Logger.log("Get remote purchase notifications.")
             for await result in Transaction.updates {
                 do {
                     let transaction = try await self.checkVerified(result)
                     await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
+                    // Notify listeners after each remote transaction
+                    await self.postProductStatusNotification()
                 } catch {
                     Logger.log("Transaction failed verification")
                 }
             }
-            // Diff refresh
-            // Notify listeners that purchase status changed
-            await self.postProductStatusNotification()
         }
     }
     /// Purchase a product
