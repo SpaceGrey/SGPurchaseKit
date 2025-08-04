@@ -59,12 +59,8 @@ The structure is like:
 ```
 
 1. The root dict key is the purchase group name.
-
 2. Each group has an array of products.
-
 3. Each product is a dict containing the id and a boolean to decide if it should be provided to users when calling `getProducts`.
-
-   
 
 ### Init Your Products
 
@@ -77,7 +73,6 @@ SGPurchases.fallbackPolicy = .days(4)
 SGPurchases.enableLog = true
 //by setting default group, you can emit the group parameter in following methods.
 SGPurchases.defaultGroup = "PurchaseGroup1"
-        
 ```
 
 ### Check Purchase Status
@@ -88,7 +83,7 @@ If you want to check the purchase status of a certain group, call `SGPurchases.s
 if await SGPurchases.shared.checkGroupStatus("PurchaseGroup1"){
      //give the user paid content.    
 } else {
-		//remove content.
+    //remove content.
 }
 ```
 
@@ -107,8 +102,8 @@ packages = await SGPurchases.shared.getProducts("PurchaseGroup1",forDisplayOnly:
 Call `SGPurchases.shared.purchase` and pass the selected `SGProduct`
 
 ```swift
- let transaction = try? await SGPurchases.shared.purchase(c)
- let result = await SGPurchases.shared.checkGroupStatus("PurchaseGroup1")//check the group status after purchase.
+let transaction = try? await SGPurchases.shared.purchase(c)
+let result = await SGPurchases.shared.checkGroupStatus("PurchaseGroup1") // check the group status after purchase.
 ```
 
 ### Restore
@@ -127,4 +122,33 @@ In some situations, like user is offline, or the user switches to a different ac
 Set it together with the `initItems()`
 
 
+### SwiftUI Integration
 
+`SGPurchaseKit` ships with a convenience `ViewModifier` and environment value so that your SwiftUI views automatically stay in sync with purchase state.
+
+```swift
+ContentView()
+    .purchaseStatus()                // Uses SGPurchases.defaultGroup
+    .purchaseStatus(group: "video")  // Uses the specified group as default
+```
+
+Inside any descendant view:
+
+```swift
+@Environment(\.purchaseStatus) private var status
+
+if status.defaultGroupStatus == true {
+    // User has purchased the default group
+}
+
+if status["video"] {
+    // User has purchased the "video" group
+}
+```
+
+`purchaseStatus` is a `PurchaseStatus` value that contains all groups:
+
+* `defaultGroupStatus: Bool?` — purchase status for `SGPurchases.defaultGroup` (or `nil` when not set).
+* `subscript(group: String) -> Bool` — random-access to any group by its name.
+
+The library broadcasts an updated `PurchaseStatus` whenever a transaction is finished or remotely updated, so the UI refreshes automatically without additional glue code.
