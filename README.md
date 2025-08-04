@@ -33,27 +33,35 @@ Firstly you need to create your `.plist` in your target.
 The structure is like:
 
 ```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
 <dict>
-	<key>PurchaseGroup1</key>
-	<array>
-		<dict>
-      <key>id</key> <string>com.item1.year</string>
-      <key>display</key> <boolean>YES</boolean>
-    </dict>
-    
-		<dict>
-      <key>id</key> <string>com.item1.lifetime</string>
-      <key>display</key> <boolean>NO</boolean>
-    </dict>
-	</array>
-  
-	<key>PurchaseGroup2</key>
-	<array>
-	<dict>
-      <key>id</key> <string>com.item2.year</string>
-      <key>display</key> <boolean>YES</boolean>
-    </dict>
-	</array>
+    <key>PurchaseGroup1</key>
+    <array>
+        <dict>
+            <key>id</key>
+            <string>com.item1.year</string>
+            <key>display</key>
+            <true/>
+        </dict>
+        <dict>
+            <key>id</key>
+            <string>com.item1.lifetime</string>
+            <key>display</key>
+            <false/>
+        </dict>
+    </array>
+
+    <key>PurchaseGroup2</key>
+    <array>
+        <dict>
+            <key>id</key>
+            <string>com.item2.year</string>
+            <key>display</key>
+            <true/>
+        </dict>
+    </array>
 </dict>
 </plist>
 ```
