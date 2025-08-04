@@ -136,7 +136,7 @@ Set it together with the `initItems()`
 
 ```swift
 ContentView()
-    .purchaseStatus()                // Injects PurchaseStatus using SGPurchases.defaultGroup
+    .injectPurchaseStatus()          // Injects PurchaseStatus using SGPurchases.defaultGroup
 ```
 
 Inside any descendant view:

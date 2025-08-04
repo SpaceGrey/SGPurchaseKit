@@ -49,7 +49,7 @@ public struct PurchaseViewModifier: ViewModifier {
 // MARK: - View Extension
 public extension View {
     /// Injects `purchaseStatus` into the `Environment` so child views can access it.
-    func purchaseStatus() -> some View {
+    func injectPurchaseStatus() -> some View {
         modifier(PurchaseViewModifier())
     }
 }
