@@ -136,8 +136,7 @@ Set it together with the `initItems()`
 
 ```swift
 ContentView()
-    .purchaseStatus()                // Uses SGPurchases.defaultGroup
-    .purchaseStatus(group: "video")  // Uses the specified group as default
+    .purchaseStatus()                // Injects PurchaseStatus using SGPurchases.defaultGroup
 ```
 
 Inside any descendant view:
