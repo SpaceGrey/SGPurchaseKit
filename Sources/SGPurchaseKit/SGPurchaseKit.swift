@@ -60,6 +60,7 @@ public class SGPurchases{
                     await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
                     // Notify listeners after each remote transaction
+                    // Diff refresh
                     await self.postProductStatusNotification()
                 } catch {
                     Logger.log("Transaction failed verification")

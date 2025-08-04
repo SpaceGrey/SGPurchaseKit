@@ -8,7 +8,7 @@
 import Foundation
 // MARK: - Notification Name
 
-public extension Notification.Name {
+extension Notification.Name {
     /// Posted whenever any group's purchase status changes (local or remote transactions).
     static let purchaseStatusUpdated = Notification.Name("SGPurchaseKit.purchaseStatusUpdated")
 }

@@ -35,6 +35,7 @@ public struct PurchaseViewModifier: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .purchaseStatusUpdated)) { noti in
                 guard let ps = noti.userInfo?["status"] as? PurchaseStatus else { return }
                 state = ps
+                Logger.log("update injected purchase status \(ps)")
             }
             // Preload the default group's status on first appearance
             .task {
