@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// 在环境中传递的购买状态数据结构
+/// Purchase status data passed through SwiftUI Environment
 public struct PurchaseStatus: Equatable {
-    /// 所有分组的购买状态，键为分组名称，值表示是否已购买
+    /// Purchase status for all groups; key is the group name, value indicates whether the user has purchased
     public var groupStatuses: [String: Bool]
 
-    /// 当前 `SGPurchases.defaultGroup` 的购买状态。
-    /// 若 `defaultGroup` 为 `nil`，此属性返回 `nil`。
+    /// Purchase status of the current `SGPurchases.defaultGroup`.
+    /// Returns `nil` when `defaultGroup` is `nil`. 
     public var defaultGroupStatus: Bool? {
         guard let g = SGPurchases.defaultGroup else { return nil }
         return groupStatuses[g]
@@ -16,7 +16,7 @@ public struct PurchaseStatus: Equatable {
         self.groupStatuses = groupStatuses
     }
 
-    /// 通过下标快速读取某个分组的购买状态
+    /// Subscript helper to retrieve a group's purchase status quickly
     public subscript(group: String) -> Bool {
         groupStatuses[group] ?? false
     }
@@ -29,7 +29,7 @@ private struct PurchaseStatusKey: EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    /// 通过 `@Environment(\.purchaseStatus)` 读取或写入当前的购买状态集合
+    /// Accessor for reading or writing the current `PurchaseStatus` via `@Environment(\.purchaseStatus)`
     var purchaseStatus: PurchaseStatus {
         get { self[PurchaseStatusKey.self] }
         set { self[PurchaseStatusKey.self] = newValue }

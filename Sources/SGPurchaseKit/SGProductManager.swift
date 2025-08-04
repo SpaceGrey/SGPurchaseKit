@@ -102,7 +102,7 @@ class SGProductManager {
         items.forEach{$0.removeCache()}
     }
     
-    /// 返回所有分组名称
+    /// Returns all group names
     @MainActor
     func allGroups() async -> [String] {
         await initTask?.value

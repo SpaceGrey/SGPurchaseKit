@@ -137,7 +137,7 @@ public class SGPurchases{
     }
     
     func postProductStatusNotification() async{
-        // 向所有分组广播最新的购买状态
+        // Broadcast the latest purchase status for all groups
         let groups = await Self.productManager.allGroups()
         var statuses: [String: Bool] = [:]
         for group in groups {

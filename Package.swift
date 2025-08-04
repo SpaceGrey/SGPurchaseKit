@@ -23,7 +23,7 @@ let package = Package(
         .target(
             name: "SGPurchaseKit",
             dependencies: [
-                .product(name: "KeychainSwift", package: "keychain-swift") // <-- 添加到目标依赖中
+                .product(name: "KeychainSwift", package: "keychain-swift") // added to target dependencies
             ],
             path: "Sources"
         )

@@ -8,23 +8,23 @@
 import SwiftUI
 import Combine
 
-/// 一个 `ViewModifier`，将所有分组的购买状态注入到视图层级中。
+/// A `ViewModifier` that injects purchase statuses for **all** groups into the view hierarchy.
 ///
-/// 用法：
+/// Usage:
 /// ```swift
 /// ContentView()
-///     .purchaseStatus()                     // 使用默认分组
-///     .purchaseStatus(group: "video")    // 指定默认分组
+///     .purchaseStatus()               // Use the library's `defaultGroup`
+///     .purchaseStatus(group: "video") // Specify an explicit default group
 /// ```
 ///
-/// 在任意子视图中可通过以下方式获取：
+/// In any descendant view you can read the status via:
 /// ```swift
 /// @Environment(\.purchaseStatus) private var purchaseStatus
 /// ```
-/// `purchaseStatus.defaultGroupStatus` 表示默认分组的购买状态，
-/// 其他分组的状态可通过 `purchaseStatus["groupName"]` 查询。
+/// `purchaseStatus.defaultGroupStatus` represents the default group's status.
+/// Other groups can be accessed with `purchaseStatus["groupName"]`. 
 public struct PurchaseViewModifier: ViewModifier {
-    /// 指定哪个分组作为 *默认* 分组；若为 `nil` 则使用 `SGPurchases.defaultGroup`。
+    /// The group treated as the *default* one; if `nil`, `SGPurchases.defaultGroup` is used.
     private let group: String?
 
     @State private var state = PurchaseStatus()
@@ -36,12 +36,12 @@ public struct PurchaseViewModifier: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .environment(\.purchaseStatus, state)
-            // 监听购买状态更新通知
+            // Observe purchase status update notifications
             .onReceive(NotificationCenter.default.publisher(for: .purchaseStatusUpdated)) { noti in
                 guard let ps = noti.userInfo?["status"] as? PurchaseStatus else { return }
                 state = ps
             }
-            // 首次进入视图时预加载默认分组的状态
+            // Preload the default group's status on first appearance
             .task {
                 let targetGroup = group ?? SGPurchases.defaultGroup
                 if let g = targetGroup {
@@ -52,10 +52,10 @@ public struct PurchaseViewModifier: ViewModifier {
     }
 }
 
-// MARK: - View 扩展
+// MARK: - View Extension
 public extension View {
-    /// 向 `Environment` 注入 `purchaseStatus`，供子视图读取。
-    /// - Parameter group: 指定哪个分组作为 `defaultGroupStatus`，若为空则使用 `SGPurchases.defaultGroup`。
+    /// Injects `purchaseStatus` into the `Environment` so child views can access it.
+    /// - Parameter group: Specifies which group should act as `defaultGroupStatus`. If `nil`, `SGPurchases.defaultGroup` is used.
     func purchaseStatus(group: String? = nil) -> some View {
         modifier(PurchaseViewModifier(group: group))
     }
