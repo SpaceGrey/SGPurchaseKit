@@ -10,5 +10,5 @@ import Foundation
 
 public extension Notification.Name {
     /// 当任意分组的购买状态发生变化（本地或远程交易）时发送。
-    public static let purchaseStatusUpdated = Notification.Name("SGPurchaseKit.purchaseStatusUpdated")
+    static let purchaseStatusUpdated = Notification.Name("SGPurchaseKit.purchaseStatusUpdated")
 }
