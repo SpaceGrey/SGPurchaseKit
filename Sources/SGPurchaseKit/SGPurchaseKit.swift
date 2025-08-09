@@ -65,9 +65,7 @@ public class SGPurchases{
                     Logger.log("Transaction failed verification")
                 }
             }
-            // Diff refresh
-            // Notify listeners that purchase status changed
-            await self.postProductStatusNotification()
+            //endless loop, can not post notification here.
         }
     }
     /// Purchase a product
