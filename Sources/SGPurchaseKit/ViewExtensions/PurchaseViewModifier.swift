@@ -23,7 +23,7 @@ import Combine
 /// `purchaseStatus.defaultGroupStatus` represents the default group's status.
 /// Other groups can be accessed with `purchaseStatus["groupName"]`.
 public struct PurchaseViewModifier: ViewModifier {
-    @State private var state = PurchaseStatus()
+    @State private var state = PurchaseStatus.loadFromDefaults() ?? PurchaseStatus()
 
     public init() {}
 
@@ -36,12 +36,14 @@ public struct PurchaseViewModifier: ViewModifier {
                 guard let ps = noti.userInfo?["status"] as? PurchaseStatus else { return }
                 state = ps
                 Logger.log("update injected purchase status \(ps)")
+                state.saveToDefaults()
             }
             // Preload the default group's status on first appearance
             .task {
                 if let g = SGPurchases.defaultGroup {
                     let purchased = await SGPurchases.shared.checkGroupStatus(g)
                     state = PurchaseStatus(groupStatuses: [g: purchased])
+                    state.saveToDefaults()
                 }
             }
     }
