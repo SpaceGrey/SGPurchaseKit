@@ -59,6 +59,8 @@ public class SGPurchases{
                     let transaction = try await self.checkVerified(result)
                     await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
+                    // Notify listeners that purchase status changed
+                    await self.postProductStatusNotification()
                 } catch {
                     Logger.log("Transaction failed verification")
                 }
