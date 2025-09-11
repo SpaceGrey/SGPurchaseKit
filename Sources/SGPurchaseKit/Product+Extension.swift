@@ -7,7 +7,7 @@
 
 import Foundation
 import StoreKit
-import SwiftUICore
+import SwiftUI
 public extension StoreKit.Product {
     /// Calculates the price per month for a subscription product.
     /// - Returns: The price per month as a `Decimal`, or `nil` if the product is not a subscription.
