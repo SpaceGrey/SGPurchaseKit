@@ -9,13 +9,14 @@ import Foundation
 import StoreKit
 import KeychainSwift
 extension SGProduct{
-    public struct PurchaseInfo:Codable,Equatable{
+    public struct PurchaseInfo: Codable,Equatable {
         private static let PREFIX = "SGProduct.PurchaseInfo"
         private static let keyChain = KeychainSwift()
-        private var fetchTime:Double
-        private var active:Bool = true
-        private var expireTime:Double?
-        private var isCache:Bool = true
+        var fetchTime:Double
+        var offerType:Transaction.OfferType?
+        var active:Bool = true
+        var expireTime:Double?
+        var isCache:Bool = true
         var hasPurchased:Bool{
             guard active else {
                 return false
@@ -47,6 +48,7 @@ extension SGProduct{
             if transaction.revocationDate != nil {
                 active = false
             }
+            self.offerType = transaction.offerType
             self.fetchTime = Date().timeIntervalSince1970
             self.expireTime = transaction.expirationDate?.timeIntervalSince1970
             if let data = try? JSONEncoder().encode(self){
