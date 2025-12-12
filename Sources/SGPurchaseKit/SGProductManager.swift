@@ -98,6 +98,20 @@ class SGProductManager {
         }
     }
     @MainActor
+    func checkGroupPurchaseStatus(_ group: String) async -> SGProduct.PurchaseStatus?{
+        let purchases = await getProducts(group,forDisplayOnly:false).compactMap(\.purchaseInfo).compactMap(\.purchaseStatus)
+        if purchases.contains(.lifetime) {
+            return .lifetime
+        }
+        if purchases.contains(.subscription) {
+            return .subscription
+        }
+        if purchases.contains(.trail) {
+            return .trail
+        }
+        return nil
+    }
+    @MainActor
     func removeCache(){
         items.forEach{$0.removeCache()}
     }

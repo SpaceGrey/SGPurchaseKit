@@ -9,6 +9,11 @@ import Foundation
 import StoreKit
 import KeychainSwift
 extension SGProduct{
+    
+    public enum PurchaseStatus{
+        case trail, subscription, lifetime
+    }
+    
     public struct PurchaseInfo: Codable,Equatable {
         private static let PREFIX = "SGProduct.PurchaseInfo"
         private static let keyChain = KeychainSwift()
@@ -44,6 +49,21 @@ extension SGProduct{
                 return false
             }
         }
+        
+        var purchaseStatus:PurchaseStatus?{
+            guard hasPurchased else {
+                return nil
+            }
+            if offerType == .introductory {
+                return .trail
+            }
+            if expireTime != nil {
+                return .subscription
+            } else {
+                return .lifetime
+            }
+        }
+        
         init(_ transaction:StoreKit.Transaction){
             if transaction.revocationDate != nil {
                 active = false
@@ -85,14 +105,27 @@ extension SGProduct.PurchaseInfo: CustomStringConvertible {
         } else {
             expireDateString = "N/A"
         }
-
-        return """
+        if #available(iOS 15.4, *) {
+            return """
         
         active: \(active)
         isCache: \(isCache)
+        offerType: \(offerType?.localizedDescription ?? "Unknown")
         fetchTime: \(fetchDateString)
         expireTime: \(expireDateString)
         
         """
+        } else {
+            
+           return """
+        
+        active: \(active)
+        isCache: \(isCache)
+        offerType: \(offerType?.rawValue ?? -1)
+        fetchTime: \(fetchDateString)
+        expireTime: \(expireDateString)
+        
+        """
+        }
     }
 }

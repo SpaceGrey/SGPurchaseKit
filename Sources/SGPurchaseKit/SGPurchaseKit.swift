@@ -108,6 +108,16 @@ public class SGPurchases{
         return await Self.productManager.checkGroupStatus(group!)
     }
     
+    /// Check the group purchaseStatus, config the offline policy in ``SGPurchases/fallbackPolicy``
+    /// - Parameter group: The group to check
+    public func checkGroupPurchaseStatus(_ g:String? = nil) async -> SGProduct.PurchaseStatus?{
+        let group = g ?? Self.defaultGroup
+        assert(group != nil, "No Group Detected, Config the defaultGroup or pass the group name")
+        await updateCustomerProductStatus()
+        return await Self.productManager.checkGroupPurchaseStatus(group!)
+    }
+    
+    
     /// Restore purchase
     ///
     /// The function will sync the data with App Store, if there's remote transaction, the listener will update the user's purchase automatically.
