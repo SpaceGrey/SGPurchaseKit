@@ -72,13 +72,21 @@ extension SGProduct{
             self.fetchTime = Date().timeIntervalSince1970
             self.expireTime = transaction.expirationDate?.timeIntervalSince1970
             if let data = try? JSONEncoder().encode(self){
-                Self.keyChain.set(data, forKey: "\(Self.PREFIX).\(transaction.productID)")
+                if !Self.keyChain.set(data, forKey: "\(Self.PREFIX).\(transaction.productID)") {
+                    Logger.log("Failed to write purchase cache for \(transaction.productID)")
+                }
+            } else {
+                Logger.log("Failed to encode purchase cache for \(transaction.productID)")
             }
             self.isCache = false
         }
         static func load(_ productId:String)->PurchaseInfo?{
             if let data = Self.keyChain.getData("\(Self.PREFIX).\(productId)"){
-                return try? JSONDecoder().decode(Self.self, from: data)
+                do {
+                    return try JSONDecoder().decode(self, from: data)
+                } catch {
+                    Logger.log("Failed to decode purchase cache for \(productId): \(error.localizedDescription)")
+                }
             }
             return nil
         }
@@ -109,6 +117,7 @@ extension SGProduct.PurchaseInfo: CustomStringConvertible {
             return """
         
         active: \(active)
+        purchased: \(hasPurchased)
         isCache: \(isCache)
         offerType: \(offerType?.localizedDescription ?? "Unknown")
         fetchTime: \(fetchDateString)

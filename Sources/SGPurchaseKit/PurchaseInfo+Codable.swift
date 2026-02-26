@@ -20,13 +20,13 @@ extension SGProduct.PurchaseInfo {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // 解码必需字段
+        // Use defaults for missing keys to keep old cache backward compatible.
         fetchTime = try container.decode(Double.self, forKey: .fetchTime)
         active = try container.decode(Bool.self, forKey: .active)
         isCache = try container.decode(Bool.self, forKey: .isCache)
         expireTime = try container.decodeIfPresent(Double.self, forKey: .expireTime)
         
-        // 向后兼容：如果 offerType 字段不存在或解码失败，设为 nil
+        // Backward compatible: default to nil if offerType is missing or invalid.
         if let rawValue = try? container.decodeIfPresent(Int.self, forKey: .offerType) {
             offerType = Transaction.OfferType(rawValue: rawValue)
         } else {

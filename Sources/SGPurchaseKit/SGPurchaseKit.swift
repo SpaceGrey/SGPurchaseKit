@@ -10,6 +10,8 @@ public class SGPurchases{
     public static let shared = SGPurchases()
     public static nonisolated(unsafe) var fallbackPolicy = FallbackPolicy.off
     public static nonisolated(unsafe) var enableLog = true
+    /// Optional custom logger. Receives a preformatted message with "[SGPurchaseKit]" prefix.
+    public static nonisolated(unsafe) var logHandler: ((String) -> Void)? = nil
     /// Set the default purchase group, and you don't need to pass the group when retrieve the items and check purchase status.
     public static nonisolated(unsafe) var defaultGroup:String?
     private static var productManager = SGProductManager()

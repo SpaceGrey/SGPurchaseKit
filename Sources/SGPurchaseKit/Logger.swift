@@ -11,6 +11,11 @@ class Logger {
         guard SGPurchases.enableLog else {
             return
         }
-        NSLog("[SGPurchaseKit] \(message)")
+        let formatted = "[SGPurchaseKit] \(message)"
+        if let logHandler = SGPurchases.logHandler {
+            logHandler(formatted)
+            return
+        }
+        NSLog("%@", formatted)
     }
 }
