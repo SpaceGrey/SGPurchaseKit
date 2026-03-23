@@ -1,6 +1,5 @@
 import Foundation
 import StoreKit
-import KeychainSwift
 @MainActor
 public class SGPurchases{
     public enum StoreError: Error {
@@ -19,6 +18,7 @@ public class SGPurchases{
     
     private init(){
         // Listen for transactions
+        Logger.log("Starting transaction updates listener")
         updateListenerTask = listenForTransactions()
     }
         
@@ -54,14 +54,17 @@ public class SGPurchases{
     }
     func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {
+            Logger.log("Transaction.updates listener is active")
             //iterate through any transactions that don't come from a direct call to 'purchase()'
             for await result in Transaction.updates {
-                do {
-                    let transaction = try await self.checkVerified(result)
+                switch result {
+                case .verified(let transaction):
+                    Logger.log("Received transaction update for \(transaction.productID)")
                     await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
-                } catch {
-                    Logger.log("Transaction failed verification")
+                    Logger.log("Finished transaction update for \(transaction.productID)")
+                case .unverified(let transaction, let error):
+                    Logger.log("Transaction update failed verification for \(transaction.productID): \(error.localizedDescription)")
                 }
             }
         }
@@ -78,6 +81,7 @@ public class SGPurchases{
         guard let product = sgProduct.product else {
             throw StoreError.productNotLoaded
         }
+        Logger.log("Starting purchase for \(sgProduct.productId)")
         let result = try await product.purchase()
         
         // check the results
@@ -91,11 +95,17 @@ public class SGPurchases{
             
             //always finish a transaction - performance
             await transaction.finish()
+            Logger.log("Purchase finished for \(sgProduct.productId)")
             
             return transaction
-        case .userCancelled, .pending:
+        case .userCancelled:
+            Logger.log("Purchase cancelled by user for \(sgProduct.productId)")
+            return nil
+        case .pending:
+            Logger.log("Purchase pending for \(sgProduct.productId)")
             return nil
         default:
+            Logger.log("Purchase returned an unknown result for \(sgProduct.productId)")
             return nil
         }
         
@@ -106,8 +116,11 @@ public class SGPurchases{
     public func checkGroupStatus(_ g:String? = nil) async -> Bool{
         let group = g ?? Self.defaultGroup
         assert(group != nil, "No Group Detected, Config the defaultGroup or pass the group name")
+        Logger.log("Checking group purchase boolean for \(group!)")
         await updateCustomerProductStatus()
-        return await Self.productManager.checkGroupStatus(group!)
+        let result = await Self.productManager.checkGroupStatus(group!)
+        Logger.log("Finished checking group purchase boolean for \(group!): \(result)")
+        return result
     }
     
     /// Check the group purchaseStatus, config the offline policy in ``SGPurchases/fallbackPolicy``
@@ -115,8 +128,11 @@ public class SGPurchases{
     public func checkGroupPurchaseStatus(_ g:String? = nil) async -> SGProduct.PurchaseStatus?{
         let group = g ?? Self.defaultGroup
         assert(group != nil, "No Group Detected, Config the defaultGroup or pass the group name")
+        Logger.log("Checking group purchase status for \(group!)")
         await updateCustomerProductStatus()
-        return await Self.productManager.checkGroupPurchaseStatus(group!)
+        let result = await Self.productManager.checkGroupPurchaseStatus(group!)
+        Logger.log("Finished checking group purchase status for \(group!): \(String(describing: result))")
+        return result
     }
     
     
@@ -124,22 +140,37 @@ public class SGPurchases{
     ///
     /// The function will sync the data with App Store, if there's remote transaction, the listener will update the user's purchase automatically.
     public func restorePurchase() async {
-        try? await AppStore.sync()
+        Logger.log("Starting AppStore.sync() restore flow")
+        do {
+            try await AppStore.sync()
+            Logger.log("AppStore.sync() restore flow completed")
+        } catch {
+            Logger.log("AppStore.sync() restore flow failed: \(error.localizedDescription)")
+        }
     }
     
     
     func updateCustomerProductStatus() async {
+        Logger.log("Refreshing current entitlements")
+        var verifiedCount = 0
+        var unverifiedCount = 0
         //iterate through all the user's purchased products
         for await result in Transaction.currentEntitlements {
-            do {
-                //again check if transaction is verified
-                let transaction = try checkVerified(result)
+            switch result {
+            case .verified(let transaction):
+                verifiedCount += 1
+                Logger.log("Found current entitlement for \(transaction.productID)")
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
                 await SGPurchases.productManager.updateProductStatus(transaction)
-            } catch {
-                Logger.log("Transaction failed verification")
+            case .unverified(let transaction, let error):
+                unverifiedCount += 1
+                Logger.log("Current entitlement failed verification for \(transaction.productID): \(error.localizedDescription)")
             }
         }
+        if verifiedCount == 0 {
+            Logger.log("StoreKit returned no current entitlements")
+        }
+        Logger.log("Finished refreshing current entitlements. verified=\(verifiedCount), unverified=\(unverifiedCount)")
     }
     
     /// Get products by group
@@ -154,10 +185,10 @@ public class SGPurchases{
     }
     ///Remove all product purchases status cache and retrieve the latest status
     public func refreshCache(){
+        Logger.log("Refreshing purchase cache")
         Self.productManager.removeCache()
         Task{
             await updateCustomerProductStatus()
         }
     }
 }
-

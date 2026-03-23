@@ -7,7 +7,6 @@
 
 import Foundation
 import StoreKit
-import KeychainSwift
 extension SGProduct{
     
     public enum PurchaseStatus{
@@ -15,8 +14,7 @@ extension SGProduct{
     }
     
     public struct PurchaseInfo: Codable,Equatable {
-        private static let PREFIX = "SGProduct.PurchaseInfo"
-        private static let keyChain = KeychainSwift()
+        private static let store: PurchaseInfoPersisting = PurchaseInfoStore.shared
         var fetchTime:Double
         var offerType:Transaction.OfferType?
         var active:Bool = true
@@ -64,6 +62,40 @@ extension SGProduct{
             }
         }
         
+        func decisionLogDescription(policy: FallbackPolicy, now: Double = Date.now.timeIntervalSince1970) -> String {
+            let cacheAgeHours = String(format: "%.1f", max(0, now - fetchTime) / 3600)
+            let fetchDescription = Self.logDateString(fetchTime)
+            let expirationDescription = expireTime.map(Self.logDateString) ?? "none"
+            
+            guard active else {
+                return "inactive/revoked, fetchTime=\(fetchDescription), expireTime=\(expirationDescription)"
+            }
+            guard isCache else {
+                return "live entitlement, fetchTime=\(fetchDescription), expireTime=\(expirationDescription)"
+            }
+            
+            switch policy {
+            case .alwaysKeepPurchase:
+                if now > expireTime ?? .infinity {
+                    return "cached entitlement expired, cacheAgeHours=\(cacheAgeHours), fetchTime=\(fetchDescription), expireTime=\(expirationDescription), fallbackPolicy=alwaysKeepPurchase"
+                } else {
+                    return "cached entitlement allowed, cacheAgeHours=\(cacheAgeHours), fetchTime=\(fetchDescription), expireTime=\(expirationDescription), fallbackPolicy=alwaysKeepPurchase"
+                }
+            case .days(let days):
+                let cacheExpiry = fetchTime + Double(days * 24 * 3600)
+                let cacheExpiryDescription = Self.logDateString(cacheExpiry)
+                if now > expireTime ?? .infinity {
+                    return "cached entitlement expired by subscription date, cacheAgeHours=\(cacheAgeHours), fetchTime=\(fetchDescription), expireTime=\(expirationDescription), fallbackPolicy=days(\(days))"
+                } else if now > cacheExpiry {
+                    return "cached entitlement expired by fallback window, cacheAgeHours=\(cacheAgeHours), fetchTime=\(fetchDescription), cacheExpiry=\(cacheExpiryDescription), expireTime=\(expirationDescription), fallbackPolicy=days(\(days))"
+                } else {
+                    return "cached entitlement allowed, cacheAgeHours=\(cacheAgeHours), fetchTime=\(fetchDescription), cacheExpiry=\(cacheExpiryDescription), expireTime=\(expirationDescription), fallbackPolicy=days(\(days))"
+                }
+            case .off:
+                return "cached entitlement denied by fallbackPolicy.off, cacheAgeHours=\(cacheAgeHours), fetchTime=\(fetchDescription), expireTime=\(expirationDescription)"
+            }
+        }
+        
         init(_ transaction:StoreKit.Transaction){
             if transaction.revocationDate != nil {
                 active = false
@@ -71,27 +103,22 @@ extension SGProduct{
             self.offerType = transaction.offerType
             self.fetchTime = Date().timeIntervalSince1970
             self.expireTime = transaction.expirationDate?.timeIntervalSince1970
-            if let data = try? JSONEncoder().encode(self){
-                if !Self.keyChain.set(data, forKey: "\(Self.PREFIX).\(transaction.productID)") {
-                    Logger.log("Failed to write purchase cache for \(transaction.productID)")
-                }
-            } else {
-                Logger.log("Failed to encode purchase cache for \(transaction.productID)")
-            }
             self.isCache = false
+            var cachedSnapshot = self
+            cachedSnapshot.isCache = true
+            Self.store.save(cachedSnapshot, for: transaction.productID)
         }
         static func load(_ productId:String)->PurchaseInfo?{
-            if let data = Self.keyChain.getData("\(Self.PREFIX).\(productId)"){
-                do {
-                    return try JSONDecoder().decode(self, from: data)
-                } catch {
-                    Logger.log("Failed to decode purchase cache for \(productId): \(error.localizedDescription)")
-                }
-            }
-            return nil
+            Self.store.load(productId)
         }
         static func remove(_ productId:String){
-            keyChain.delete("\(PREFIX).\(productId)")
+            store.remove(productId)
+        }
+        
+        private static func logDateString(_ timeInterval: Double) -> String {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            return formatter.string(from: Date(timeIntervalSince1970: timeInterval))
         }
     }
 }

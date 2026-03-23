@@ -20,7 +20,7 @@ public class SGProduct:Hashable,Equatable{
         self.group = group
         self.purchaseInfo = PurchaseInfo.load(productId)
         if let p = purchaseInfo{
-            print("load \(productId) info from cache \(p)")
+            Logger.log("Loaded purchase cache for \(productId): \(p)")
         }
     }
     public func hash(into hasher: inout Hasher) {
@@ -43,5 +43,4 @@ public enum FallbackPolicy{
     /// use cache to keep the user's purchase info forever, please be cautious for using this, some user may escaping the payment using other's account.
     case alwaysKeepPurchase
 }
-
 
