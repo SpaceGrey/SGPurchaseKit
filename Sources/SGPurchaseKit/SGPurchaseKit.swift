@@ -149,16 +149,29 @@ public class SGPurchases{
         }
     }
     
+    func isTransactionCurrentlyValid(_ transaction: Transaction) -> Bool {
+        if transaction.revocationDate != nil {
+            return false
+        }
+        guard let expirationDate = transaction.expirationDate else {
+            return true
+        }
+        return expirationDate > Date()
+    }
+    
     
     func updateCustomerProductStatus() async {
         Logger.log("Refreshing current entitlements")
         var verifiedCount = 0
         var unverifiedCount = 0
+        var latestFallbackCount = 0
+        var currentProductIDs = Set<String>()
         //iterate through all the user's purchased products
         for await result in Transaction.currentEntitlements {
             switch result {
             case .verified(let transaction):
                 verifiedCount += 1
+                currentProductIDs.insert(transaction.productID)
                 Logger.log("Found current entitlement for \(transaction.productID)")
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
                 await SGPurchases.productManager.updateProductStatus(transaction)
@@ -167,10 +180,30 @@ public class SGPurchases{
                 Logger.log("Current entitlement failed verification for \(transaction.productID): \(error.localizedDescription)")
             }
         }
+        let productIDs = Set(await Self.productManager.getProductIDs())
+        let latestFallbackIDs = productIDs.subtracting(currentProductIDs).sorted()
+        for productID in latestFallbackIDs {
+            guard let result = await Transaction.latest(for: productID) else {
+                Logger.log("No latest transaction found for \(productID)")
+                continue
+            }
+            switch result {
+            case .verified(let transaction):
+                guard isTransactionCurrentlyValid(transaction) else {
+                    Logger.log("Latest transaction for \(productID) is not currently valid")
+                    continue
+                }
+                latestFallbackCount += 1
+                Logger.log("Using latest transaction fallback for \(productID)")
+                await SGPurchases.productManager.updateProductStatus(transaction)
+            case .unverified(let transaction, let error):
+                Logger.log("Latest transaction failed verification for \(transaction.productID): \(error.localizedDescription)")
+            }
+        }
         if verifiedCount == 0 {
             Logger.log("StoreKit returned no current entitlements")
         }
-        Logger.log("Finished refreshing current entitlements. verified=\(verifiedCount), unverified=\(unverifiedCount)")
+        Logger.log("Finished refreshing current entitlements. verified=\(verifiedCount), unverified=\(unverifiedCount), latestFallback=\(latestFallbackCount)")
     }
     
     /// Get products by group

@@ -94,6 +94,12 @@ class SGProductManager {
         
         
     }
+    func getProductIDs() async -> [String] {
+        await loadItems()
+        return await MainActor.run {
+            items.map(\.productId)
+        }
+    }
     
     func getProducts(_ group: String,forDisplayOnly:Bool) async -> [SGProduct] {
         await loadItems()

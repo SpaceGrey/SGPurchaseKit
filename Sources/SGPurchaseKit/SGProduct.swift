@@ -43,4 +43,3 @@ public enum FallbackPolicy{
     /// use cache to keep the user's purchase info forever, please be cautious for using this, some user may escaping the payment using other's account.
     case alwaysKeepPurchase
 }
-

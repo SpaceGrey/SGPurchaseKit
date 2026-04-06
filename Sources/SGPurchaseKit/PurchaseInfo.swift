@@ -61,7 +61,7 @@ extension SGProduct{
                 return .lifetime
             }
         }
-        
+
         func decisionLogDescription(policy: FallbackPolicy, now: Double = Date.now.timeIntervalSince1970) -> String {
             let cacheAgeHours = String(format: "%.1f", max(0, now - fetchTime) / 3600)
             let fetchDescription = Self.logDateString(fetchTime)
@@ -140,7 +140,7 @@ extension SGProduct.PurchaseInfo: CustomStringConvertible {
         } else {
             expireDateString = "N/A"
         }
-        if #available(iOS 15.4, *) {
+        if #available(iOS 15.4, macOS 12.3, tvOS 15.4, watchOS 8.5, visionOS 1.0, *) {
             return """
         
         active: \(active)
