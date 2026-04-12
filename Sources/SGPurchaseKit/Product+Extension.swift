@@ -44,5 +44,20 @@ public extension StoreKit.Product {
         let pricePerMonth = price / Decimal(months)
         return pricePerMonth
     }
+    
+    var familySharingLogDescription: String {
+        isFamilyShareable ? "supported" : "notSupported"
+    }
 }
 
+extension StoreKit.Transaction.OwnershipType {
+    var logDescription: String {
+        if self == .purchased {
+            return "purchased"
+        }
+        if self == .familyShared {
+            return "familyShared"
+        }
+        return "unknown"
+    }
+}

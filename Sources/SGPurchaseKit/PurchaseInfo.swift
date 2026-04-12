@@ -14,9 +14,23 @@ extension SGProduct{
     }
     
     public struct PurchaseInfo: Codable,Equatable {
+        enum OwnershipType: String, Codable {
+            case purchased
+            case familyShared
+            
+            init(_ ownershipType: Transaction.OwnershipType) {
+                if ownershipType == .familyShared {
+                    self = .familyShared
+                } else {
+                    self = .purchased
+                }
+            }
+        }
+        
         private static let store: PurchaseInfoPersisting = PurchaseInfoStore.shared
         var fetchTime:Double
         var offerType:Transaction.OfferType?
+        var ownershipType: OwnershipType?
         var active:Bool = true
         var expireTime:Double?
         var isCache:Bool = true
@@ -101,6 +115,7 @@ extension SGProduct{
                 active = false
             }
             self.offerType = transaction.offerType
+            self.ownershipType = OwnershipType(transaction.ownershipType)
             self.fetchTime = Date().timeIntervalSince1970
             self.expireTime = transaction.expirationDate?.timeIntervalSince1970
             self.isCache = false
@@ -147,6 +162,7 @@ extension SGProduct.PurchaseInfo: CustomStringConvertible {
         purchased: \(hasPurchased)
         isCache: \(isCache)
         offerType: \(offerType?.localizedDescription ?? "Unknown")
+        ownershipType: \(ownershipType?.rawValue ?? "Unknown")
         fetchTime: \(fetchDateString)
         expireTime: \(expireDateString)
         
@@ -158,6 +174,7 @@ extension SGProduct.PurchaseInfo: CustomStringConvertible {
         active: \(active)
         isCache: \(isCache)
         offerType: \(offerType?.rawValue ?? -1)
+        ownershipType: \(ownershipType?.rawValue ?? "Unknown")
         fetchTime: \(fetchDateString)
         expireTime: \(expireDateString)
         

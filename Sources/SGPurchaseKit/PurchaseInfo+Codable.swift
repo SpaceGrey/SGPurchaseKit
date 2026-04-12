@@ -12,6 +12,7 @@ extension SGProduct.PurchaseInfo {
     enum CodingKeys: String, CodingKey {
         case fetchTime
         case offerType
+        case ownershipType
         case active
         case expireTime
         case isCache
@@ -32,6 +33,7 @@ extension SGProduct.PurchaseInfo {
         } else {
             offerType = nil
         }
+        ownershipType = try container.decodeIfPresent(OwnershipType.self, forKey: .ownershipType)
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -46,5 +48,6 @@ extension SGProduct.PurchaseInfo {
         if let offerType = offerType {
             try container.encode(offerType.rawValue, forKey: .offerType)
         }
+        try container.encodeIfPresent(ownershipType, forKey: .ownershipType)
     }
 }

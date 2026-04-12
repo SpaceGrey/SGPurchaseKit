@@ -72,8 +72,11 @@ class SGProductManager {
                     items.remove(p)
                     items.insert(p)
                 }
-                if p.product != nil {
-                    Logger.log("Group \(key) product metadata loaded for \(productID)")
+                if let product = p.product {
+                    Logger.log(
+                        "Group \(key) product metadata loaded for \(productID), " +
+                        "isFamilyShareable=\(product.familySharingLogDescription)"
+                    )
                 } else {
                     Logger.log("Group \(key) product metadata unavailable for \(productID)")
                 }
@@ -90,7 +93,13 @@ class SGProductManager {
             return
         }
         product.purchaseInfo = SGProduct.PurchaseInfo(transaction)
-        Logger.log("product: \(product.productId), status: \(String(describing: product.purchaseInfo))")
+        let familySharingDescription = product.product?.familySharingLogDescription ?? "unknown"
+        Logger.log(
+            "product: \(product.productId), " +
+            "isFamilyShareable=\(familySharingDescription), " +
+            "ownershipType=\(transaction.ownershipType.logDescription), " +
+            "status: \(String(describing: product.purchaseInfo))"
+        )
         
         
     }

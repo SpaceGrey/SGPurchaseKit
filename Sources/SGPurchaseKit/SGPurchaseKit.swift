@@ -172,7 +172,10 @@ public class SGPurchases{
             case .verified(let transaction):
                 verifiedCount += 1
                 currentProductIDs.insert(transaction.productID)
-                Logger.log("Found current entitlement for \(transaction.productID)")
+                Logger.log(
+                    "Found current entitlement for \(transaction.productID), " +
+                    "ownershipType=\(transaction.ownershipType.logDescription)"
+                )
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
                 await SGPurchases.productManager.updateProductStatus(transaction)
             case .unverified(let transaction, let error):
