@@ -159,6 +159,33 @@ public class SGPurchases{
         return expirationDate > Date()
     }
     
+    private func logDateString(_ date: Date?) -> String {
+        guard let date else {
+            return "nil"
+        }
+        let formatter = ISO8601DateFormatter()
+        return formatter.string(from: date)
+    }
+    
+    private func logLatestTransactionSnapshot(for productID: String, source: String) async {
+        guard let result = await Transaction.latest(for: productID) else {
+            Logger.log("No latest transaction found for \(productID) after \(source)")
+            return
+        }
+        switch result {
+        case .verified(let transaction):
+            Logger.log(
+                "Latest transaction after \(source) for \(productID), " +
+                "ownershipType=\(transaction.ownershipType.logDescription), " +
+                "expirationDate=\(logDateString(transaction.expirationDate)), " +
+                "revocationDate=\(logDateString(transaction.revocationDate)), " +
+                "isUpgraded=\(transaction.isUpgraded)"
+            )
+        case .unverified(let transaction, let error):
+            Logger.log("Latest transaction after \(source) failed verification for \(transaction.productID): \(error.localizedDescription)")
+        }
+    }
+    
     
     func updateCustomerProductStatus() async {
         Logger.log("Refreshing current entitlements")
@@ -176,6 +203,7 @@ public class SGPurchases{
                     "Found current entitlement for \(transaction.productID), " +
                     "ownershipType=\(transaction.ownershipType.logDescription)"
                 )
+                await logLatestTransactionSnapshot(for: transaction.productID, source: "current entitlement")
                 // since we only have one type of producttype - .nonconsumables -- check if any storeProducts matches the transaction.productID then add to the purchasedCourses
                 await SGPurchases.productManager.updateProductStatus(transaction)
             case .unverified(let transaction, let error):
