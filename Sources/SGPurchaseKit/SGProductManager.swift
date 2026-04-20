@@ -158,6 +158,29 @@ class SGProductManager {
     func removeCache(){
         items.forEach{$0.removeCache()}
     }
+
+    func waitForInitialization() async {
+        await initTask?.value
+    }
+
+    @MainActor
+    func allGroups() async -> [String] {
+        await initTask?.value
+        return plistModels.map(\.groupName).sorted()
+    }
+
+    @MainActor
+    func cachedGroupStatuses() async -> [String: Bool] {
+        await initTask?.value
+        var statuses: [String: Bool] = [:]
+        for model in plistModels {
+            let hasPurchased = model.stringItems.contains { productID in
+                SGProduct.PurchaseInfo.load(productID)?.hasPurchased == true
+            }
+            statuses[model.groupName] = hasPurchased
+        }
+        return statuses
+    }
     
     private func groupDiagnostics(_ groupItems: [SGProduct]) -> String {
         if groupItems.isEmpty {

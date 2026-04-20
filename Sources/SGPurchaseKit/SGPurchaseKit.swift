@@ -13,6 +13,8 @@ public class SGPurchases{
     public static nonisolated(unsafe) var logHandler: ((String) -> Void)? = nil
     /// Set the default purchase group, and you don't need to pass the group when retrieve the items and check purchase status.
     public static nonisolated(unsafe) var defaultGroup:String?
+    /// Optional host delegate. Called only when `listenForTransactions()` receives a verified remote transaction update.
+    public weak var hostDelegate: SGPurchasesHostDelegate?
     private static var productManager = SGProductManager()
     var updateListenerTask: Task<Void, Error>? = nil
     
@@ -38,6 +40,9 @@ public class SGPurchases{
     /// ```
     public static func initItems(from url:URL){
         Self.productManager.initItems(from: url)
+        Task { @MainActor in
+            await Self.shared.refreshPurchaseStatusAfterItemConfiguration()
+        }
     }
     
     //Generics - check the verificationResults
@@ -56,12 +61,17 @@ public class SGPurchases{
         return Task.detached {
             Logger.log("Transaction.updates listener is active")
             //iterate through any transactions that don't come from a direct call to 'purchase()'
+            Logger.log("Listening for remote purchase notifications")
             for await result in Transaction.updates {
                 switch result {
                 case .verified(let transaction):
                     Logger.log("Received transaction update for \(transaction.productID)")
                     await Self.productManager.updateProductStatus(transaction)
                     await transaction.finish()
+                    let source = "transaction update for \(transaction.productID)"
+                    let purchaseStatus = await self.buildPurchaseStatusSnapshot()
+                    await self.notifyHostDelegate(productID: transaction.productID, purchaseStatus: purchaseStatus)
+                    await self.postProductStatusNotification(purchaseStatus, source: source)
                     Logger.log("Finished transaction update for \(transaction.productID)")
                 case .unverified(let transaction, let error):
                     Logger.log("Transaction update failed verification for \(transaction.productID): \(error.localizedDescription)")
@@ -89,6 +99,11 @@ public class SGPurchases{
         case .success(let verificationResult):
             //Transaction will be verified for automatically using JWT(jwsRepresentation) - we can check the result
             let transaction = try checkVerified(verificationResult)
+
+            // Persist the verified transaction immediately so host apps can
+            // read the fresh purchase state even if currentEntitlements lags.
+            await Self.productManager.updateProductStatus(transaction)
+            Logger.log("Persisted purchase state immediately for \(sgProduct.productId)")
             
             //the transaction is verified, deliver the content to the user
             await updateCustomerProductStatus()
@@ -185,9 +200,30 @@ public class SGPurchases{
             Logger.log("Latest transaction after \(source) failed verification for \(transaction.productID): \(error.localizedDescription)")
         }
     }
+
+    func cachedPurchaseStatus() async -> PurchaseStatus {
+        let purchaseStatus = PurchaseStatus(groupStatuses: await Self.productManager.cachedGroupStatuses())
+        Logger.log("Loaded cached purchase status snapshot for SwiftUI injection: \(purchaseStatus.logDescription)")
+        return purchaseStatus
+    }
+
+    func currentPurchaseStatus() async -> PurchaseStatus {
+        Logger.log("Refreshing purchase status snapshot for SwiftUI injection")
+        let purchaseStatus = await updateCustomerProductStatus(source: "SwiftUI status refresh")
+        Logger.log("Finished purchase status snapshot refresh for SwiftUI injection: \(purchaseStatus.logDescription)")
+        return purchaseStatus
+    }
+
+    private func refreshPurchaseStatusAfterItemConfiguration() async {
+        Logger.log("Waiting for purchase item configuration before refreshing purchase status")
+        await Self.productManager.waitForInitialization()
+        Logger.log("Purchase item configuration loaded, refreshing purchase status")
+        await updateCustomerProductStatus(source: "item configuration refresh")
+    }
     
     
-    func updateCustomerProductStatus() async {
+    @discardableResult
+    func updateCustomerProductStatus(source: String = "entitlement refresh") async -> PurchaseStatus {
         Logger.log("Refreshing current entitlements")
         var verifiedCount = 0
         var unverifiedCount = 0
@@ -234,7 +270,49 @@ public class SGPurchases{
         if verifiedCount == 0 {
             Logger.log("StoreKit returned no current entitlements")
         }
-        Logger.log("Finished refreshing current entitlements. verified=\(verifiedCount), unverified=\(unverifiedCount), latestFallback=\(latestFallbackCount)")
+        let purchaseStatus = await buildPurchaseStatusSnapshot()
+        Logger.log(
+            "Finished refreshing current entitlements. " +
+            "verified=\(verifiedCount), unverified=\(unverifiedCount), latestFallback=\(latestFallbackCount), " +
+            "snapshot=\(purchaseStatus.logDescription)"
+        )
+        postProductStatusNotification(purchaseStatus, source: source)
+        return purchaseStatus
+    }
+
+    private func buildPurchaseStatusSnapshot() async -> PurchaseStatus {
+        let groups = await Self.productManager.allGroups()
+        var statuses: [String: Bool] = [:]
+        for group in groups {
+            statuses[group] = await Self.productManager.checkGroupStatus(group)
+        }
+        return PurchaseStatus(groupStatuses: statuses)
+    }
+
+    func postProductStatusNotification(source: String) async {
+        let purchaseStatus = await buildPurchaseStatusSnapshot()
+        postProductStatusNotification(purchaseStatus, source: source)
+    }
+
+    private func notifyHostDelegate(productID: String, purchaseStatus: PurchaseStatus) {
+        guard let hostDelegate else {
+            Logger.log("No host delegate registered for remote transaction update \(productID)")
+            return
+        }
+        Logger.log(
+            "Calling host delegate for remote transaction update \(productID): " +
+            "\(purchaseStatus.logDescription)"
+        )
+        hostDelegate.purchases(self, didReceiveRemoteTransactionFor: productID, purchaseStatus: purchaseStatus)
+    }
+
+    private func postProductStatusNotification(_ purchaseStatus: PurchaseStatus, source: String) {
+        Logger.log("Broadcasting purchase status update from \(source): \(purchaseStatus.logDescription)")
+        NotificationCenter.default.post(
+            name: .purchaseStatusUpdated,
+            object: nil,
+            userInfo: [PurchaseStatusNotificationUserInfoKey.status: purchaseStatus]
+        )
     }
     
     /// Get products by group

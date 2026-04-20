@@ -127,4 +127,50 @@ In some situations, like user is offline, or the user switches to a different ac
 Set it together with the `initItems()`
 
 
+### SwiftUI Integration
 
+If your host app uses SwiftUI, you can inject purchase state into the environment and let the package keep it updated after entitlement refreshes and transaction notifications.
+
+```swift
+ContentView()
+    .injectPurchaseStatus()
+```
+
+Inside any child view:
+
+```swift
+@Environment(\.sgPurchaseStatus) private var sgPurchaseStatus
+
+if sgPurchaseStatus.defaultGroupStatus == true {
+    // User has access to SGPurchases.defaultGroup
+}
+
+if sgPurchaseStatus["PurchaseGroup2"] {
+    // User has access to a specific group
+}
+```
+
+`injectPurchaseStatus()` injects all configured groups, not just the default group. On launch it first derives a snapshot from the package's existing purchase cache, then refreshes against StoreKit and keeps SwiftUI updated after entitlement refreshes and transaction notifications.
+
+Call `SGPurchases.initItems(from:)` during app startup so the initial SwiftUI snapshot has the configured group definitions as early as possible.
+
+### Host Delegate For Remote Transactions
+
+If your host app wants a direct callback when StoreKit reports a remote transaction update, assign a host delegate:
+
+```swift
+final class PurchaseCoordinator: SGPurchasesHostDelegate {
+    @MainActor
+    func purchases(
+        _ purchases: SGPurchases,
+        didReceiveRemoteTransactionFor productID: String,
+        purchaseStatus: PurchaseStatus
+    ) {
+        print("Remote transaction updated:", productID, purchaseStatus)
+    }
+}
+
+SGPurchases.shared.hostDelegate = purchaseCoordinator
+```
+
+This delegate is only triggered by `listenForTransactions()` remote updates. It is independent from the SwiftUI `purchaseStatusUpdated` notification path.
