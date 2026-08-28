@@ -160,7 +160,7 @@ public class SGPurchases{
             try await AppStore.sync()
             Logger.log("AppStore.sync() restore flow completed")
         } catch {
-            Logger.log("AppStore.sync() restore flow failed: \(error.localizedDescription)")
+            Logger.log("AppStore.sync() restore flow failed: \(Logger.storeKitErrorDescription(error))")
         }
     }
     

@@ -53,10 +53,19 @@ class SGProductManager {
             let key = model.groupName
             let value = model.stringItems
             let products: [Product]
+            Logger.log("Requesting StoreKit product metadata for group \(key), productIDs=\(value.joined(separator: ", "))")
             do {
                 products = try await Product.products(for: value)
+                Logger.log(
+                    "StoreKit product metadata request completed for group \(key), " +
+                    "requestedCount=\(value.count), returnedCount=\(products.count), " +
+                    "returnedProductIDs=\(products.map(\.id).sorted().joined(separator: ", "))"
+                )
             } catch {
-                Logger.log("Failed to load StoreKit products for group \(key): \(error.localizedDescription)")
+                Logger.log(
+                    "StoreKit product metadata request failed for group \(key), " +
+                    "productIDs=\(value.joined(separator: ", ")): \(Logger.storeKitErrorDescription(error))"
+                )
                 products = []
             }
             let missingProductIDs = value.filter { productID in
