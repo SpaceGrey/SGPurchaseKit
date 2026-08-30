@@ -113,12 +113,18 @@ Call `SGPurchases.shared.purchase` and pass the selected `SGProduct`
 
 ### Restore
 
-Call `SGPurchases.shared.restorePurchases`. You don't need to call restore when you launch the app, the `SGPurchaseKit` automatically listens to the remote transactions and updates the status. 
+Call `SGPurchases.shared.restorePurchaseOrThrow()` when your UI needs to distinguish a cancelled request, network error, storefront restriction, or another StoreKit failure. You don't need to call restore when you launch the app, the `SGPurchaseKit` automatically listens to remote transactions and updates the status.
 
 ```swift
-await SGPurchases.shared.restorePurchase()
+do {
+    try await SGPurchases.shared.restorePurchaseOrThrow()
+} catch let error as RestorePurchaseError {
+    // Present the appropriate recovery UI for error.
+}
 let result = await SGPurchases.shared.checkGroupStatus("PurchaseGroup1")
 ```
+
+`restorePurchase()` remains available for callers that intentionally ignore restore errors.
 
 ### Fallback Policy
 

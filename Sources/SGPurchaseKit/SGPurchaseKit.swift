@@ -155,12 +155,25 @@ public class SGPurchases{
     ///
     /// The function will sync the data with App Store, if there's remote transaction, the listener will update the user's purchase automatically.
     public func restorePurchase() async {
+        _ = try? await restorePurchaseOrThrow()
+    }
+
+    /// Restore purchases and report a classified StoreKit failure to the caller.
+    ///
+    /// Use this API when the host app needs to distinguish a cancellation, network failure,
+    /// storefront restriction, or another StoreKit failure in its UI.
+    public func restorePurchaseOrThrow() async throws {
         Logger.log("Starting AppStore.sync() restore flow")
         do {
             try await AppStore.sync()
             Logger.log("AppStore.sync() restore flow completed")
         } catch {
-            Logger.log("AppStore.sync() restore flow failed: \(Logger.storeKitErrorDescription(error))")
+            let restoreError = RestorePurchaseError.classify(error)
+            Logger.log(
+                "AppStore.sync() restore flow failed, classifiedError=\(restoreError): " +
+                Logger.storeKitErrorDescription(error)
+            )
+            throw restoreError
         }
     }
     
